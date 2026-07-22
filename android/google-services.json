@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "180424116104",
+    "project_id": "velora-f0bb0",
+    "storage_bucket": "velora-f0bb0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:180424116104:android:24dd932f40df24870a5c3d",
+        "android_client_info": {
+          "package_name": "com.example.velora"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDYGwXk0pSuOuUY82L9Yvu6PuSBR2UHP8U"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
