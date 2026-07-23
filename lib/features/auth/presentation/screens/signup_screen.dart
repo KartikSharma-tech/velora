@@ -1,34 +1,33 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../app/router/app_router.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/app_radius.dart';
 import '../../../../app/theme/app_spacing.dart';
 import '../../../../app/theme/app_typography.dart';
 import '../../../../core/utils/validators.dart';
+import '../providers/auth_provider.dart';
 
-class SignupScreen extends StatefulWidget {
+class SignupScreen extends ConsumerStatefulWidget {
   const SignupScreen({super.key});
 
   @override
-  State<SignupScreen> createState() => _SignupScreenState();
+  ConsumerState<SignupScreen> createState() => _SignupScreenState();
 }
 
-class _SignupScreenState extends State<SignupScreen> {
+class _SignupScreenState extends ConsumerState<SignupScreen> {
   final _formKey = GlobalKey<FormState>();
 
   final _nameController = TextEditingController();
-
   final _emailController = TextEditingController();
-
   final _passwordController = TextEditingController();
-
   final _confirmPasswordController = TextEditingController();
 
   bool _obscurePassword = true;
-
   bool _obscureConfirmPassword = true;
-
   bool _loading = false;
 
   @override
@@ -43,32 +42,81 @@ class _SignupScreenState extends State<SignupScreen> {
   Future<void> _signup() async {
     if (!_formKey.currentState!.validate()) return;
 
+    FocusScope.of(context).unfocus();
+
     setState(() {
       _loading = true;
     });
 
-    await Future.delayed(const Duration(seconds: 2));
+    try {
+      await ref
+          .read(authRepositoryProvider)
+          .signUp(
+            name: _nameController.text.trim(),
+            email: _emailController.text.trim(),
+            password: _passwordController.text,
+          );
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Account created successfully. Please verify your email before logging in.',
+          ),
+        ),
+      );
+
+      context.go(AppRouter.login);
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+
+      String message;
+
+      switch (e.code) {
+        case 'email-already-in-use':
+          message = 'An account already exists with this email.';
+          break;
+
+        case 'invalid-email':
+          message = 'Please enter a valid email address.';
+          break;
+
+        case 'weak-password':
+          message = 'Password is too weak.';
+          break;
+
+        case 'operation-not-allowed':
+          message = 'Email/password authentication is disabled.';
+          break;
+
+        default:
+          message = e.message ?? 'Signup failed.';
+      }
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+    } catch (_) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Something went wrong.')));
+    }
 
     if (!mounted) return;
 
     setState(() {
       _loading = false;
     });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Firebase signup will be connected in next step.'),
-      ),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-
       appBar: AppBar(elevation: 0, backgroundColor: Colors.transparent),
-
       body: SafeArea(
         child: SingleChildScrollView(
           padding: AppSpacing.screenPadding,
@@ -94,17 +142,14 @@ class _SignupScreenState extends State<SignupScreen> {
                 ),
 
                 AppSpacing.gapXXL,
-
                 TextFormField(
                   controller: _nameController,
                   validator: Validators.name,
                   textInputAction: TextInputAction.next,
-                  decoration: InputDecoration(
+                  decoration: const InputDecoration(
                     labelText: "Full Name",
-                    prefixIcon: const Icon(Icons.person_outline),
-                    border: const OutlineInputBorder(
-                      borderRadius: AppRadius.lg,
-                    ),
+                    prefixIcon: Icon(Icons.person_outline),
+                    border: OutlineInputBorder(borderRadius: AppRadius.lg),
                   ),
                 ),
 
@@ -115,16 +160,15 @@ class _SignupScreenState extends State<SignupScreen> {
                   validator: Validators.email,
                   keyboardType: TextInputType.emailAddress,
                   textInputAction: TextInputAction.next,
-                  decoration: InputDecoration(
-                    labelText: 'Email',
-                    prefixIcon: const Icon(Icons.email_outlined),
-                    border: const OutlineInputBorder(
-                      borderRadius: AppRadius.lg,
-                    ),
+                  decoration: const InputDecoration(
+                    labelText: "Email",
+                    prefixIcon: Icon(Icons.email_outlined),
+                    border: OutlineInputBorder(borderRadius: AppRadius.lg),
                   ),
                 ),
 
                 AppSpacing.gapLG,
+
                 TextFormField(
                   controller: _passwordController,
                   validator: Validators.password,
@@ -156,11 +200,12 @@ class _SignupScreenState extends State<SignupScreen> {
                 TextFormField(
                   controller: _confirmPasswordController,
                   obscureText: _obscureConfirmPassword,
+                  textInputAction: TextInputAction.done,
+                  onFieldSubmitted: (_) => _signup(),
                   validator: (value) => Validators.confirmPassword(
                     _passwordController.text,
                     value,
                   ),
-                  textInputAction: TextInputAction.done,
                   decoration: InputDecoration(
                     labelText: "Confirm Password",
                     prefixIcon: const Icon(Icons.lock_outline),
@@ -214,9 +259,9 @@ class _SignupScreenState extends State<SignupScreen> {
                       ),
                     ),
                     TextButton(
-                      onPressed: () {
-                        context.pop();
-                      },
+                      onPressed: _loading
+                          ? null
+                          : () => context.go(AppRouter.login),
                       child: const Text("Login"),
                     ),
                   ],

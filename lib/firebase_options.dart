@@ -53,7 +53,6 @@ class DefaultFirebaseOptions {
     projectId: 'velora-f0bb0',
     storageBucket: 'velora-f0bb0.firebasestorage.app',
   );
-
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyBLAGuRmjxqsd1MMRMxZOoSwPGq0L0yLyI',
     appId: '1:180424116104:ios:83f8184115172ced0a5c3d',
@@ -62,7 +61,6 @@ class DefaultFirebaseOptions {
     storageBucket: 'velora-f0bb0.firebasestorage.app',
     iosBundleId: 'com.example.velora',
   );
-
   static const FirebaseOptions macos = FirebaseOptions(
     apiKey: 'AIzaSyBLAGuRmjxqsd1MMRMxZOoSwPGq0L0yLyI',
     appId: '1:180424116104:ios:83f8184115172ced0a5c3d',

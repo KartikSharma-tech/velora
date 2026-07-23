@@ -5,6 +5,7 @@ import '../../features/auth/presentation/screens/forgot_password_screen.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/signup_screen.dart';
 import '../../features/splash/presentation/screens/splash_screen.dart';
+import '../../features/home/presentation/screens/home_screen.dart';
 
 @immutable
 final class AppRouter {
@@ -18,6 +19,7 @@ final class AppRouter {
   static const String login = '/login';
   static const String signup = '/signup';
   static const String forgotPassword = '/forgot-password';
+  static const String home = '/home';
 
   // ===========================================================
   // Router
@@ -47,14 +49,15 @@ final class AppRouter {
         name: 'forgot-password',
         builder: (context, state) => const ForgotPasswordScreen(),
       ),
+      GoRoute(
+        path: home,
+        name: 'home',
+        builder: (context, state) => const HomeScreen(),
+      ),
     ],
     errorBuilder: (context, state) {
       return Scaffold(
-        body: Center(
-          child: Text(
-            state.error?.toString() ?? 'Page Not Found',
-          ),
-        ),
+        body: Center(child: Text(state.error?.toString() ?? 'Page Not Found')),
       );
     },
   );

@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../app/router/app_router.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/app_spacing.dart';
 import '../../../../app/theme/app_typography.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 
-class SplashScreen extends StatefulWidget {
+class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
   @override
-  State<SplashScreen> createState() => _SplashScreenState();
+  ConsumerState<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> {
+class _SplashScreenState extends ConsumerState<SplashScreen> {
   @override
   void initState() {
     super.initState();
@@ -24,13 +27,14 @@ class _SplashScreenState extends State<SplashScreen> {
 
     if (!mounted) return;
 
-    // TODO:
-    // Replace with authentication check.
-    // Example:
-    // context.go('/login');
-    // context.go('/home');
+    final isLoggedIn =
+        ref.read(authRepositoryProvider).isLoggedIn;
 
-    context.go('/login');
+    if (isLoggedIn) {
+      context.go(AppRouter.home);
+    } else {
+      context.go(AppRouter.login);
+    }
   }
 
   @override
@@ -44,42 +48,61 @@ class _SplashScreenState extends State<SplashScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Container(
-                  height: 110,
-                  width: 110,
-                  decoration: const BoxDecoration(
-                    color: AppColors.primary,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.chat_bubble_rounded,
-                    color: Colors.white,
-                    size: 52,
+                Hero(
+                  tag: "app_logo",
+                  child: Container(
+                    height: 120,
+                    width: 120,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(35),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withOpacity(.25),
+                          blurRadius: 30,
+                          spreadRadius: 5,
+                          offset: const Offset(0, 12),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.chat_bubble_rounded,
+                      color: Colors.white,
+                      size: 58,
+                    ),
                   ),
                 ),
 
-                AppSpacing.gapXXL,
+                AppSpacing.gapXXXL,
 
                 Text(
-                  'Velora',
+                  "Velora",
                   style: AppTypography.displaySmall.copyWith(
                     color: AppColors.textPrimary,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1,
                   ),
                 ),
 
                 AppSpacing.gapSM,
 
                 Text(
-                  'Premium Messaging Experience',
+                  "Luxury Messaging Experience",
                   textAlign: TextAlign.center,
                   style: AppTypography.bodyMedium.copyWith(
                     color: AppColors.textSecondary,
                   ),
                 ),
 
-                AppSpacing.gapXXXL,
+                const SizedBox(height: 55),
 
-                const CircularProgressIndicator(),
+                const SizedBox(
+                  width: 26,
+                  height: 26,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.6,
+                  ),
+                ),
               ],
             ),
           ),
