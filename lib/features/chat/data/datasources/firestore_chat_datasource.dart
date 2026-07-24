@@ -1,0 +1,156 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+import '../models/chat_room_model.dart';
+import '../models/message_model.dart';
+import '../models/chat_tile_model.dart';
+import '../../../user/data/models/user_model.dart';
+
+class FirestoreChatDataSource {
+  FirestoreChatDataSource({FirebaseFirestore? firestore})
+    : _firestore = firestore ?? FirebaseFirestore.instance;
+
+  final FirebaseFirestore _firestore;
+
+  CollectionReference<Map<String, dynamic>> get _chatRooms =>
+      _firestore.collection('chat_rooms');
+
+  // ==========================================================
+  // Create Chat Room
+  // ==========================================================
+
+  Future<String> createChatRoom({required List<String> participants}) async {
+    participants.sort();
+
+    final roomId = participants.join('_');
+
+    final roomDoc = _chatRooms.doc(roomId);
+
+    final snapshot = await roomDoc.get();
+
+    if (!snapshot.exists) {
+      final room = ChatRoomModel(
+        id: roomId,
+        participants: participants,
+        lastMessage: '',
+        lastMessageSenderId: '',
+        lastMessageTime: DateTime.now(),
+        lastMessageSeen: true,
+        createdAt: DateTime.now(),
+      );
+
+      await roomDoc.set(room.toMap());
+    }
+
+    return roomId;
+  }
+
+  // ==========================================================
+  // Send Message
+  // ==========================================================
+
+  Future<void> sendMessage(MessageModel message) async {
+    final messageRef = _chatRooms
+        .doc(message.chatRoomId)
+        .collection('messages')
+        .doc(message.id);
+
+    await messageRef.set(message.toMap());
+
+    await _chatRooms.doc(message.chatRoomId).update({
+      'lastMessage': message.text,
+      'lastMessageSenderId': message.senderId,
+      'lastMessageTime': message.timestamp.toIso8601String(),
+      'lastMessageSeen': false,
+    });
+  }
+
+  // ==========================================================
+  // Messages Stream
+  // ==========================================================
+
+  Stream<List<MessageModel>> messageStream(String roomId) {
+    return _chatRooms
+        .doc(roomId)
+        .collection('messages')
+        .orderBy('timestamp', descending: false)
+        .snapshots()
+        .map(
+          (snapshot) =>
+              snapshot.docs.map((e) => MessageModel.fromMap(e.data())).toList(),
+        );
+  }
+
+  // ==========================================================
+  // Chat Rooms Stream
+  // ==========================================================
+
+  Stream<List<ChatRoomModel>> chatRoomsStream(String userId) {
+    return _chatRooms
+        .where('participants', arrayContains: userId)
+        .orderBy('lastMessageTime', descending: true)
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs
+              .map((e) => ChatRoomModel.fromMap(e.data()))
+              .toList(),
+        );
+  }
+
+  // ==========================================================
+  // Mark Last Message Seen
+  // ==========================================================
+
+  Future<void> markLastMessageSeen(String roomId) async {
+    await _chatRooms.doc(roomId).update({'lastMessageSeen': true});
+  }
+
+  // ==========================================================
+  // Chat Tiles Stream
+  // ==========================================================
+
+  Stream<List<ChatTileModel>> getChatTiles(String currentUserId) {
+    return _chatRooms
+        .where('participants', arrayContains: currentUserId)
+        .orderBy('lastMessageTime', descending: true)
+        .snapshots()
+        .asyncMap((snapshot) async {
+          final List<ChatTileModel> chats = [];
+
+          for (final doc in snapshot.docs) {
+            final room = ChatRoomModel.fromMap(doc.data());
+
+            final otherUserId = room.participants.firstWhere(
+              (id) => id != currentUserId,
+            );
+
+            final userDoc = await _firestore
+                .collection('users')
+                .doc(otherUserId)
+                .get();
+
+            if (!userDoc.exists) {
+              continue;
+            }
+
+            final user = UserModel.fromMap(userDoc.data()!);
+
+            chats.add(
+              ChatTileModel(
+                roomId: room.id,
+                otherUserId: user.uid,
+                otherUserName: user.name,
+                otherUserPhoto: user.photoUrl,
+                lastMessage: room.lastMessage,
+                lastMessageTime: room.lastMessageTime,
+                lastMessageSeen: room.lastMessageSeen,
+                otherUserOnline: user.isOnline,
+                // otherUserLastSeen: user.lastSeen,
+                otherUserLastSeen: user.lastSeen ?? DateTime.now(),
+              ),
+            );
+          }
+
+          return chats;
+        });
+  }
+}

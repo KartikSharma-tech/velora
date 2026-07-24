@@ -4,8 +4,10 @@ import '../../data/datasources/firebase_auth_datasource.dart';
 import '../../data/repositories/auth_repository_impl.dart';
 import '../../domain/repositories/auth_repository.dart';
 
+import '../../../user/presentation/providers/user_provider.dart';
+
 /// ===========================================================
-/// DataSource
+/// Firebase Auth DataSource
 /// ===========================================================
 
 final firebaseAuthDataSourceProvider =
@@ -14,12 +16,17 @@ final firebaseAuthDataSourceProvider =
 });
 
 /// ===========================================================
-/// Repository
+/// Auth Repository
 /// ===========================================================
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return AuthRepositoryImpl(
-    remoteDataSource: ref.read(firebaseAuthDataSourceProvider),
+    remoteDataSource: ref.read(
+      firebaseAuthDataSourceProvider,
+    ),
+    userRepository: ref.read(
+      userRepositoryProvider,
+    ),
   );
 });
 

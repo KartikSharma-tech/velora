@@ -1,12 +1,18 @@
 import '../../domain/repositories/auth_repository.dart';
 import '../datasources/firebase_auth_datasource.dart';
 
+import '../../../user/data/models/user_model.dart';
+import '../../../user/domain/repositories/user_repository.dart';
+
 class AuthRepositoryImpl implements AuthRepository {
   AuthRepositoryImpl({
     required FirebaseAuthDataSource remoteDataSource,
-  }) : _remoteDataSource = remoteDataSource;
+    required UserRepository userRepository,
+  })  : _remoteDataSource = remoteDataSource,
+        _userRepository = userRepository;
 
   final FirebaseAuthDataSource _remoteDataSource;
+  final UserRepository _userRepository;
 
   @override
   String? get currentUserId => _remoteDataSource.currentUserId;
@@ -37,6 +43,26 @@ class AuthRepositoryImpl implements AuthRepository {
     );
 
     await _remoteDataSource.updateDisplayName(name);
+
+    final uid = _remoteDataSource.currentUserId;
+
+    if (uid == null) {
+      throw Exception('User not found after signup.');
+    }
+
+    final user = UserModel(
+      uid: uid,
+      name: name,
+      email: email,
+      photoUrl: '',
+      about: "Hey there! I'm using Velora.",
+      isOnline: true,
+      lastSeen: DateTime.now(),
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+
+    await _userRepository.createUser(user);
 
     await _remoteDataSource.sendEmailVerification();
   }
