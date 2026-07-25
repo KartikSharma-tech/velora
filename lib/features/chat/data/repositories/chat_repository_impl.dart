@@ -6,8 +6,8 @@ import '../models/message_model.dart';
 
 class ChatRepositoryImpl implements ChatRepository {
   ChatRepositoryImpl({
-    required FirestoreChatDataSource dataSource,
-  }) : _dataSource = dataSource;
+    required this._dataSource,
+  });
 
   final FirestoreChatDataSource _dataSource;
 

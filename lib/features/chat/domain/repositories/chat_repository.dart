@@ -1,4 +1,5 @@
 import '../../data/models/chat_room_model.dart';
+import '../../data/models/chat_tile_model.dart';
 import '../../data/models/message_model.dart';
 
 abstract class ChatRepository {
@@ -12,6 +13,10 @@ abstract class ChatRepository {
 
   Stream<List<ChatRoomModel>> chatRoomsStream(
     String userId,
+  );
+
+  Stream<List<ChatTileModel>> getChatTiles(
+    String currentUserId,
   );
 
   // ==========================================================

@@ -59,7 +59,8 @@ class FirestoreChatDataSource {
     await _chatRooms.doc(message.chatRoomId).update({
       'lastMessage': message.text,
       'lastMessageSenderId': message.senderId,
-      'lastMessageTime': message.timestamp.toIso8601String(),
+      // 'lastMessageTime': message.timestamp.toIso8601String(),
+      'lastMessageTime': Timestamp.fromDate(message.timestamp),
       'lastMessageSeen': false,
     });
   }
