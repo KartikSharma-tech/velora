@@ -3,11 +3,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../../../app/router/app_router.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../data/models/message_model.dart';
+import '../../domain/repositories/chat_repository.dart';
 import '../providers/chat_provider.dart';
 import '../widgets/chat_app_bar.dart';
 import '../widgets/chat_date_separator.dart';
@@ -49,9 +52,26 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   bool _iAmTyping = false;
   bool _showEmojiPicker = false;
 
+  // BUG FIX: `dispose()` used to call `_setTyping(false)`, which
+  // internally did `ref.read(...)`. Riverpod throws
+  // `StateError: Cannot use "ref" after the widget was disposed`
+  // the moment any teardown work touches `ref` inside/after
+  // dispose(). Both of these are captured *eagerly* in initState()
+  // (while `ref` is still valid) so cleanup never needs to read a
+  // provider again — note these are plain fields assigned in
+  // initState, not `late final ... = ref.read(...)`, because a
+  // lazy `late` initializer would only run on first access, and if
+  // that first access happened to be inside dispose() itself
+  // (e.g. the user never typed anything) it would hit the exact
+  // same disposed-ref crash.
+  String? _currentUserId;
+  late ChatRepository _chatRepository;
+
   @override
   void initState() {
     super.initState();
+    _currentUserId = ref.read(currentUserIdProvider);
+    _chatRepository = ref.read(chatRepositoryProvider);
     WidgetsBinding.instance.addPostFrameCallback((_) => _markSeen());
     // BUG FIX: nothing ever flipped a message's isSeen to true or
     // the room's lastMessageSeen flag, so the double-tick / unread
@@ -77,7 +97,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _searchController.dispose();
     _scrollController.dispose();
     _typingTimer?.cancel();
-    _setTyping(false);
+    // Uses the cached repository/userId from above — never `ref`.
+    if (_iAmTyping && _currentUserId != null) {
+      _chatRepository.setTyping(
+        roomId: widget.roomId,
+        userId: _currentUserId!,
+        isTyping: false,
+      );
+    }
     super.dispose();
   }
 
@@ -121,14 +148,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   void _setTyping(bool isTyping) {
-    final userId = ref.read(currentUserIdProvider);
+    final userId = _currentUserId;
     if (userId == null || _iAmTyping == isTyping) return;
     _iAmTyping = isTyping;
-    ref.read(chatRepositoryProvider).setTyping(
-          roomId: widget.roomId,
-          userId: userId,
-          isTyping: isTyping,
-        );
+    _chatRepository.setTyping(
+      roomId: widget.roomId,
+      userId: userId,
+      isTyping: isTyping,
+    );
   }
 
   // ============================================================
@@ -352,7 +379,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       orElse: () => false,
     );
 
-    return Scaffold(
+    return PopScope(
+      canPop: context.canPop(),
+      onPopInvoked: (didPop) {
+        if (didPop) return;
+        context.go(AppRouter.home);
+      },
+      child: Scaffold(
       appBar: _isSearching
           ? AppBar(
               titleSpacing: 0,
@@ -521,6 +554,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             child: Text(error.toString(), textAlign: TextAlign.center),
           ),
         ),
+      ),
       ),
     );
   }

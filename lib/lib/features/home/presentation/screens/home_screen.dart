@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../user/presentation/providers/user_provider.dart';
@@ -9,8 +10,26 @@ import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../chat/data/models/chat_tile_model.dart';
 import '../../../chat/presentation/providers/chat_provider.dart';
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  /// BUG FIX (back navigation): Home is the *root* of the
+  /// navigation stack — Splash/Login reach it via `context.go()`,
+  /// which intentionally clears the stack so users can't go
+  /// "back" into the auth flow. That's correct GoRouter usage, but
+  /// it also means Home has nothing left to pop, so a hardware/
+  /// gesture back press here used to fall straight through to the
+  /// OS and kill the app instantly — no confirmation, felt like a
+  /// crash. This adds the standard "press back again to exit"
+  /// pattern instead of an abrupt close. Search Users and Chat
+  /// aren't touched — they're pushed with `context.push()` and
+  /// already pop correctly one level at a time.
+  DateTime? _lastBackPress;
 
   Future<void> _logout(BuildContext context, WidgetRef ref) async {
     try {
@@ -36,8 +55,28 @@ class HomeScreen extends ConsumerWidget {
     }
   }
 
+  void _handleBackPress() {
+    final now = DateTime.now();
+
+    if (_lastBackPress == null ||
+        now.difference(_lastBackPress!) > const Duration(seconds: 2)) {
+      _lastBackPress = now;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text('Press back again to exit'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      return;
+    }
+
+    SystemNavigator.pop();
+  }
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final userId = ref.watch(currentUserIdProvider);
 
     if (userId == null) {
@@ -46,7 +85,14 @@ class HomeScreen extends ConsumerWidget {
 
     final chatsAsync = ref.watch(chatTilesProvider(userId));
     final currentUserAsync = ref.watch(currentUserProvider(userId));
-    return Scaffold(
+
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) {
+        if (didPop) return;
+        _handleBackPress();
+      },
+      child: Scaffold(
       appBar: AppBar(
         elevation: 0,
         centerTitle: false,
@@ -367,6 +413,7 @@ class HomeScreen extends ConsumerWidget {
         },
         icon: const Icon(Icons.chat_rounded),
         label: const Text("New Chat"),
+      ),
       ),
     );
   }

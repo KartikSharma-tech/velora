@@ -53,7 +53,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _searchController.dispose();
     _scrollController.dispose();
     _typingTimer?.cancel();
-    _setTyping(false);
+    // _setTyping(false);
     super.dispose();
   }
 

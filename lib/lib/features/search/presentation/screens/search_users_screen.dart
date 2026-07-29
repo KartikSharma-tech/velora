@@ -33,11 +33,22 @@ class _SearchUsersScreenState
     final usersAsync = ref.watch(allUsersProvider);
     final currentUserId = ref.watch(currentUserIdProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('New Chat'),
-      ),
-      body: Column(
+    return PopScope(
+      canPop: context.canPop(),
+      onPopInvoked: (didPop) {
+        if (didPop) return;
+        context.go(AppRouter.home);
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('New Chat'),
+          leading: IconButton(
+            tooltip: 'Back',
+            icon: const Icon(Icons.arrow_back_rounded),
+            onPressed: () => AppRouter.backOrHome(context),
+          ),
+        ),
+        body: Column(
         children: [
           Padding(
             padding: const EdgeInsets.all(16),
@@ -130,6 +141,7 @@ class _SearchUsersScreenState
             ),
           ),
         ],
+      ),
       ),
     );
   }

@@ -29,6 +29,19 @@ final class AppRouter {
   static const String profile = '/profile';
   static const String settings = '/settings';
 
+  /// Pops one level if there's somewhere to pop *back* to;
+  /// otherwise falls back to Home instead of doing nothing / letting
+  /// the OS handle (and potentially exit) the app. Use this for
+  /// every in-app back arrow and hardware-back handler so "back"
+  /// never gets stuck on a screen with an empty stack above it.
+  static void backOrHome(BuildContext context) {
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go(home);
+    }
+  }
+
   // ===========================================================
   // Router
   // ===========================================================
