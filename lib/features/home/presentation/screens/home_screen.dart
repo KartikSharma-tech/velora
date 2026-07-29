@@ -58,9 +58,11 @@ class HomeScreen extends ConsumerWidget {
             onSelected: (value) async {
               switch (value) {
                 case 'profile':
+                  context.push(AppRouter.profile);
                   break;
 
                 case 'settings':
+                  context.push(AppRouter.settings);
                   break;
 
                 case 'logout':
@@ -222,6 +224,12 @@ class HomeScreen extends ConsumerWidget {
                     final ChatTileModel chat = chats[index];
 
                     return ListTile(
+                      tileColor: chat.isPinned
+                          ? AppColors.primary.withValues(alpha: .06)
+                          : null,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       onTap: () {
                         context.push(
                           AppRouter.chat,
@@ -231,6 +239,13 @@ class HomeScreen extends ConsumerWidget {
                             'receiverName': chat.otherUserName,
                           },
                         );
+                      },
+                      onLongPress: () {
+                        ref.read(chatRepositoryProvider).togglePinChat(
+                              roomId: chat.roomId,
+                              userId: userId,
+                              pin: !chat.isPinned,
+                            );
                       },
                       leading: Stack(
                         clipBehavior: Clip.none,
@@ -273,11 +288,25 @@ class HomeScreen extends ConsumerWidget {
                             ),
                         ],
                       ),
-                      title: Text(
-                        chat.otherUserName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      title: Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              chat.otherUserName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                          if (chat.isPinned) ...[
+                            const SizedBox(width: 4),
+                            Icon(
+                              Icons.push_pin_rounded,
+                              size: 13,
+                              color: AppColors.textHint,
+                            ),
+                          ],
+                        ],
                       ),
                       subtitle: Text(
                         chat.lastMessage.isEmpty

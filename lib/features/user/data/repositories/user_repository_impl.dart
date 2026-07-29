@@ -63,4 +63,17 @@ class UserRepositoryImpl implements UserRepository {
   Future<void> deleteUser(String uid) {
     return _dataSource.deleteUser(uid);
   }
+
+  @override
+  Future<void> blockUser({required String uid, required String blockedUid}) {
+    return _dataSource.blockUser(uid: uid, blockedUid: blockedUid);
+  }
+
+  @override
+  Future<void> unblockUser({
+    required String uid,
+    required String blockedUid,
+  }) {
+    return _dataSource.unblockUser(uid: uid, blockedUid: blockedUid);
+  }
 }

@@ -38,4 +38,52 @@ abstract class ChatRepository {
   Future<void> markLastMessageSeen(
     String roomId,
   );
+
+  // ==========================================================
+  // Delete Message
+  // ==========================================================
+
+  Future<void> deleteMessageForMe({
+    required String roomId,
+    required String messageId,
+    required String userId,
+  });
+
+  Future<void> deleteMessageForEveryone({
+    required String roomId,
+    required String messageId,
+  });
+
+  // ==========================================================
+  // Reactions
+  // ==========================================================
+
+  Future<void> toggleReaction({
+    required String roomId,
+    required String messageId,
+    required String userId,
+    required String? emoji,
+  });
+
+  // ==========================================================
+  // Typing Indicator
+  // ==========================================================
+
+  Future<void> setTyping({
+    required String roomId,
+    required String userId,
+    required bool isTyping,
+  });
+
+  Stream<List<String>> typingStream(String roomId);
+
+  // ==========================================================
+  // Pinned Chats
+  // ==========================================================
+
+  Future<void> togglePinChat({
+    required String roomId,
+    required String userId,
+    required bool pin,
+  });
 }

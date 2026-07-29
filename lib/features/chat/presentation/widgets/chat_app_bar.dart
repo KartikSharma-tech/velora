@@ -4,19 +4,28 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../user/presentation/providers/user_provider.dart';
+import '../providers/chat_provider.dart';
 
 /// Chat screen app bar — receiver's avatar (with live online dot),
-/// name, and a "Online" / "Last seen ..." presence line driven by
-/// the existing [currentUserProvider] stream.
+/// name, and a "Online" / "Last seen ..." / "typing…" presence line
+/// driven by [currentUserProvider] + [typingUsersProvider].
 class ChatAppBar extends ConsumerWidget implements PreferredSizeWidget {
   const ChatAppBar({
     super.key,
+    required this.roomId,
     required this.receiverId,
     required this.receiverName,
+    required this.isBlocked,
+    required this.onToggleBlock,
+    required this.onSearchTap,
   });
 
+  final String roomId;
   final String receiverId;
   final String receiverName;
+  final bool isBlocked;
+  final VoidCallback onToggleBlock;
+  final VoidCallback onSearchTap;
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
@@ -24,6 +33,11 @@ class ChatAppBar extends ConsumerWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final receiverAsync = ref.watch(currentUserProvider(receiverId));
+    final typingAsync = ref.watch(typingUsersProvider(roomId));
+    final isTyping = typingAsync.maybeWhen(
+      data: (typingUsers) => typingUsers.contains(receiverId),
+      orElse: () => false,
+    );
 
     return AppBar(
       titleSpacing: 0,
@@ -88,15 +102,18 @@ class ChatAppBar extends ConsumerWidget implements PreferredSizeWidget {
                       ),
                     ),
                     Text(
-                      AppFormatters.presence(
-                        isOnline: isOnline,
-                        lastSeen: user?.lastSeen,
-                      ),
+                      isTyping
+                          ? 'typing…'
+                          : AppFormatters.presence(
+                              isOnline: isOnline,
+                              lastSeen: user?.lastSeen,
+                            ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 12,
-                        color: isOnline
+                        fontStyle: isTyping ? FontStyle.italic : FontStyle.normal,
+                        color: isTyping || isOnline
                             ? AppColors.online
                             : AppColors.textHint,
                       ),
@@ -130,14 +147,25 @@ class ChatAppBar extends ConsumerWidget implements PreferredSizeWidget {
       ),
       actions: [
         IconButton(
+          tooltip: 'Search',
+          icon: const Icon(Icons.search_rounded),
+          onPressed: onSearchTap,
+        ),
+        IconButton(
           tooltip: 'Voice call',
           icon: const Icon(Icons.call_outlined),
           onPressed: () => _comingSoon(context),
         ),
-        IconButton(
-          tooltip: 'Video call',
-          icon: const Icon(Icons.videocam_outlined),
-          onPressed: () => _comingSoon(context),
+        PopupMenuButton<String>(
+          onSelected: (value) {
+            if (value == 'block') onToggleBlock();
+          },
+          itemBuilder: (context) => [
+            PopupMenuItem(
+              value: 'block',
+              child: Text(isBlocked ? 'Unblock user' : 'Block user'),
+            ),
+          ],
         ),
       ],
     );

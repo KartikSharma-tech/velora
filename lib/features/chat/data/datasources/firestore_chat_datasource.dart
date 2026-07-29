@@ -147,11 +147,108 @@ class FirestoreChatDataSource {
                 otherUserOnline: user.isOnline,
                 // otherUserLastSeen: user.lastSeen,
                 otherUserLastSeen: user.lastSeen ?? DateTime.now(),
+                isPinned: room.pinnedBy.contains(currentUserId),
               ),
             );
           }
 
+          chats.sort((a, b) {
+            if (a.isPinned != b.isPinned) {
+              return a.isPinned ? -1 : 1;
+            }
+            return b.lastMessageTime.compareTo(a.lastMessageTime);
+          });
+
           return chats;
         });
+  }
+
+  // ==========================================================
+  // Delete Message
+  // ==========================================================
+
+  Future<void> deleteMessageForMe({
+    required String roomId,
+    required String messageId,
+    required String userId,
+  }) async {
+    await _chatRooms.doc(roomId).collection('messages').doc(messageId).update(
+      {
+        'deletedFor': FieldValue.arrayUnion([userId]),
+      },
+    );
+  }
+
+  Future<void> deleteMessageForEveryone({
+    required String roomId,
+    required String messageId,
+  }) async {
+    await _chatRooms.doc(roomId).collection('messages').doc(messageId).update(
+      {
+        'isDeletedForEveryone': true,
+        'text': '',
+        'imageUrl': null,
+        'reactions': <String, String>{},
+      },
+    );
+  }
+
+  // ==========================================================
+  // Reactions
+  // ==========================================================
+
+  Future<void> toggleReaction({
+    required String roomId,
+    required String messageId,
+    required String userId,
+    required String? emoji,
+  }) async {
+    final ref = _chatRooms.doc(roomId).collection('messages').doc(messageId);
+
+    if (emoji == null) {
+      await ref.update({'reactions.$userId': FieldValue.delete()});
+    } else {
+      await ref.update({'reactions.$userId': emoji});
+    }
+  }
+
+  // ==========================================================
+  // Typing Indicator
+  // ==========================================================
+
+  Future<void> setTyping({
+    required String roomId,
+    required String userId,
+    required bool isTyping,
+  }) async {
+    await _chatRooms.doc(roomId).update({
+      'typingUsers': isTyping
+          ? FieldValue.arrayUnion([userId])
+          : FieldValue.arrayRemove([userId]),
+    });
+  }
+
+  Stream<List<String>> typingStream(String roomId) {
+    return _chatRooms.doc(roomId).snapshots().map((snapshot) {
+      final data = snapshot.data();
+      if (data == null) return const [];
+      return List<String>.from(data['typingUsers'] ?? const []);
+    });
+  }
+
+  // ==========================================================
+  // Pinned Chats
+  // ==========================================================
+
+  Future<void> togglePinChat({
+    required String roomId,
+    required String userId,
+    required bool pin,
+  }) async {
+    await _chatRooms.doc(roomId).update({
+      'pinnedBy': pin
+          ? FieldValue.arrayUnion([userId])
+          : FieldValue.arrayRemove([userId]),
+    });
   }
 }

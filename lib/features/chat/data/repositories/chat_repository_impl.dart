@@ -66,4 +66,86 @@ class ChatRepositoryImpl implements ChatRepository {
   ) {
     return _dataSource.markLastMessageSeen(roomId);
   }
+
+  // ==========================================================
+  // Delete Message
+  // ==========================================================
+
+  @override
+  Future<void> deleteMessageForMe({
+    required String roomId,
+    required String messageId,
+    required String userId,
+  }) {
+    return _dataSource.deleteMessageForMe(
+      roomId: roomId,
+      messageId: messageId,
+      userId: userId,
+    );
+  }
+
+  @override
+  Future<void> deleteMessageForEveryone({
+    required String roomId,
+    required String messageId,
+  }) {
+    return _dataSource.deleteMessageForEveryone(
+      roomId: roomId,
+      messageId: messageId,
+    );
+  }
+
+  // ==========================================================
+  // Reactions
+  // ==========================================================
+
+  @override
+  Future<void> toggleReaction({
+    required String roomId,
+    required String messageId,
+    required String userId,
+    required String? emoji,
+  }) {
+    return _dataSource.toggleReaction(
+      roomId: roomId,
+      messageId: messageId,
+      userId: userId,
+      emoji: emoji,
+    );
+  }
+
+  // ==========================================================
+  // Typing Indicator
+  // ==========================================================
+
+  @override
+  Future<void> setTyping({
+    required String roomId,
+    required String userId,
+    required bool isTyping,
+  }) {
+    return _dataSource.setTyping(
+      roomId: roomId,
+      userId: userId,
+      isTyping: isTyping,
+    );
+  }
+
+  @override
+  Stream<List<String>> typingStream(String roomId) {
+    return _dataSource.typingStream(roomId);
+  }
+
+  // ==========================================================
+  // Pinned Chats
+  // ==========================================================
+
+  @override
+  Future<void> togglePinChat({
+    required String roomId,
+    required String userId,
+    required bool pin,
+  }) {
+    return _dataSource.togglePinChat(roomId: roomId, userId: userId, pin: pin);
+  }
 }
