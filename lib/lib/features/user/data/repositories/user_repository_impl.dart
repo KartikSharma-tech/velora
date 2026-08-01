@@ -3,8 +3,8 @@ import '../datasources/firestore_user_datasource.dart';
 import '../models/user_model.dart';
 class UserRepositoryImpl implements UserRepository {
   UserRepositoryImpl({
-    required FirestoreUserDataSource dataSource,
-  }) : _dataSource = dataSource;
+    required this._dataSource,
+  });
 
   final FirestoreUserDataSource _dataSource;
 

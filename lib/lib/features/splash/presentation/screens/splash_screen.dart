@@ -58,7 +58,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                       borderRadius: BorderRadius.circular(35),
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.primary.withOpacity(.25),
+                          color: AppColors.primary.withValues(alpha: .25),
                           blurRadius: 30,
                           spreadRadius: 5,
                           offset: const Offset(0, 12),

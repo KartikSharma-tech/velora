@@ -149,7 +149,7 @@ class ChatAppBar extends ConsumerWidget implements PreferredSizeWidget {
             ),
           ],
         ),
-        error: (_, __) => Text(receiverName),
+        error: (_, _) => Text(receiverName),
       ),
       actions: [
         IconButton(

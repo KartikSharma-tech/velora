@@ -65,6 +65,6 @@ final currentUserIdProvider = Provider<String?>((ref) {
   return authState.when(
     data: (user) => user?.uid,
     loading: () => ref.read(firebaseAuthDataSourceProvider).currentUserId,
-    error: (_, __) => null,
+    error: (_, _) => null,
   );
 });

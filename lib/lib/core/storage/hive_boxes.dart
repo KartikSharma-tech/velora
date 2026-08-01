@@ -7,6 +7,7 @@
 /// Open these boxes once during bootstrap().
 ///
 /// ===========================================================
+library;
 
 class HiveBoxes {
   const HiveBoxes._();

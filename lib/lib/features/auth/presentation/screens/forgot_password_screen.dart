@@ -124,7 +124,7 @@ class _ForgotPasswordScreenState
                       width: 110,
                       height: 110,
                       decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(.12),
+                        color: AppColors.primary.withValues(alpha: .12),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
@@ -204,7 +204,7 @@ class _ForgotPasswordScreenState
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(.06),
+                        color: AppColors.primary.withValues(alpha: .06),
                         borderRadius: AppRadius.lg,
                       ),
                       child: Row(

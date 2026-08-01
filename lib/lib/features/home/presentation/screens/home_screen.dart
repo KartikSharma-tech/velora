@@ -178,7 +178,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               fontSize: 17,
                             ),
                           ),
-                          error: (_, __) => Text(
+                          error: (_, _) => Text(
                             userId,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -273,7 +273,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   itemCount: chats.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 10),
+                  separatorBuilder: (_, _) => const SizedBox(height: 10),
                   itemBuilder: (context, index) {
                     final ChatTileModel chat = chats[index];
 

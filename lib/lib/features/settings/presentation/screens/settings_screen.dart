@@ -87,7 +87,7 @@ class _BlockedUsersList extends ConsumerWidget {
         padding: EdgeInsets.all(16),
         child: Center(child: CircularProgressIndicator()),
       ),
-      error: (_, __) => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
       data: (me) {
         final blocked = me?.blockedUsers ?? const [];
 
@@ -105,7 +105,7 @@ class _BlockedUsersList extends ConsumerWidget {
             padding: EdgeInsets.all(16),
             child: Center(child: CircularProgressIndicator()),
           ),
-          error: (_, __) => const SizedBox.shrink(),
+          error: (_, _) => const SizedBox.shrink(),
           data: (allUsers) {
             final blockedUsers =
                 allUsers.where((u) => blocked.contains(u.uid)).toList();
