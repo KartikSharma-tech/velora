@@ -7,6 +7,9 @@ class MessageModel {
   final String type;
   final DateTime timestamp;
   final bool isSeen;
+  final bool isDelivered;
+  final DateTime? deliveredAt;
+  final DateTime? seenAt;
   final String? imageUrl;
 
   /// Reply-to (denormalized so the bubble can render the quoted
@@ -31,6 +34,9 @@ class MessageModel {
     required this.type,
     required this.timestamp,
     required this.isSeen,
+    this.isDelivered = false,
+    this.deliveredAt,
+    this.seenAt,
     this.imageUrl,
     this.replyToId,
     this.replyToText,
@@ -50,6 +56,13 @@ class MessageModel {
       type: map['type'] ?? 'text',
       timestamp: DateTime.parse(map['timestamp']),
       isSeen: map['isSeen'] ?? false,
+      isDelivered: map['isDelivered'] ?? false,
+
+      deliveredAt: map['deliveredAt'] != null
+          ? DateTime.parse(map['deliveredAt'])
+          : null,
+
+      seenAt: map['seenAt'] != null ? DateTime.parse(map['seenAt']) : null,
       imageUrl: map['imageUrl'],
       replyToId: map['replyToId'],
       replyToText: map['replyToText'],
@@ -70,6 +83,10 @@ class MessageModel {
       'type': type,
       'timestamp': timestamp.toIso8601String(),
       'isSeen': isSeen,
+      'isDelivered': isDelivered,
+      'deliveredAt': deliveredAt?.toIso8601String(),
+      'seenAt': seenAt?.toIso8601String(),
+
       'imageUrl': imageUrl,
       'replyToId': replyToId,
       'replyToText': replyToText,
@@ -92,6 +109,9 @@ class MessageModel {
     String? type,
     DateTime? timestamp,
     bool? isSeen,
+    bool? isDelivered,
+    DateTime? deliveredAt,
+    DateTime? seenAt,
     String? imageUrl,
     String? replyToId,
     String? replyToText,

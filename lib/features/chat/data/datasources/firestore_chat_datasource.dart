@@ -63,8 +63,43 @@ class FirestoreChatDataSource {
       'lastMessageTime': Timestamp.fromDate(message.timestamp),
       'lastMessageSeen': false,
     });
-  }
+  }// ==========================================================
+// Mark Message Delivered
+// ==========================================================
 
+Future<void> markMessageDelivered({
+  required String roomId,
+  required String messageId,
+  
+}) 
+
+async {
+  await _chatRooms
+      .doc(roomId)
+      .collection('messages')
+      .doc(messageId)
+      .update({
+    'isDelivered': true,
+    'deliveredAt': DateTime.now().toIso8601String(),
+  });
+}
+// ==========================================================
+// Mark Message Seen
+// ==========================================================
+
+Future<void> markMessageSeen({
+  required String roomId,
+  required String messageId,
+}) async {
+  await _chatRooms
+      .doc(roomId)
+      .collection('messages')
+      .doc(messageId)
+      .update({
+    'isSeen': true,
+    'seenAt': DateTime.now().toIso8601String(),
+  });
+}
   // ==========================================================
   // Messages Stream
   // ==========================================================

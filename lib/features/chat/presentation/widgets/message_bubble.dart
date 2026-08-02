@@ -43,7 +43,8 @@ class MessageBubble extends StatelessWidget {
         ? Colors.white.withValues(alpha: .75)
         : (isDark ? AppColors.textHintDark : AppColors.textHint);
 
-    final hasReply = message.replyToText != null && message.replyToText!.isNotEmpty;
+    final hasReply =
+        message.replyToText != null && message.replyToText!.isNotEmpty;
     final reactionEmojis = message.reactions.values.toSet().toList();
 
     return Align(
@@ -65,8 +66,9 @@ class MessageBubble extends StatelessWidget {
                   color: highlighted
                       ? AppColors.primary.withValues(alpha: .25)
                       : bubbleColor,
-                  borderRadius:
-                      isMe ? AppRadius.senderBubble : AppRadius.receiverBubble,
+                  borderRadius: isMe
+                      ? AppRadius.senderBubble
+                      : AppRadius.receiverBubble,
                   boxShadow: AppShadows.chatBubble,
                 ),
                 child: Column(
@@ -108,15 +110,21 @@ class MessageBubble extends StatelessWidget {
                               message.replyToText!,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: TextStyle(fontSize: 12.5, color: textColor),
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                color: textColor,
+                              ),
                             ),
                           ],
                         ),
                       ),
                     Text(
                       message.text,
-                      style:
-                          TextStyle(color: textColor, fontSize: 15.5, height: 1.3),
+                      style: TextStyle(
+                        color: textColor,
+                        fontSize: 15.5,
+                        height: 1.3,
+                      ),
                     ),
                     const SizedBox(height: 3),
                     Row(
@@ -128,8 +136,11 @@ class MessageBubble extends StatelessWidget {
                         ),
                         if (isMe) ...[
                           const SizedBox(width: 4),
+
                           Icon(
                             message.isSeen
+                                ? Icons.done_all_rounded
+                                : message.isDelivered
                                 ? Icons.done_all_rounded
                                 : Icons.done_rounded,
                             size: 15,
@@ -149,7 +160,10 @@ class MessageBubble extends StatelessWidget {
                   right: isMe ? 8 : null,
                   left: isMe ? null : 8,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 5,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: isDark ? AppColors.surfaceDark : AppColors.surface,
                       borderRadius: BorderRadius.circular(100),
@@ -184,9 +198,12 @@ class _DeletedBubble extends StatelessWidget {
         margin: const EdgeInsets.symmetric(vertical: 2),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: isDark ? AppColors.surfaceVariantDark : AppColors.surfaceVariant,
-          borderRadius:
-              isMe ? AppRadius.senderBubble : AppRadius.receiverBubble,
+          color: isDark
+              ? AppColors.surfaceVariantDark
+              : AppColors.surfaceVariant,
+          borderRadius: isMe
+              ? AppRadius.senderBubble
+              : AppRadius.receiverBubble,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,

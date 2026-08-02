@@ -63,10 +63,39 @@ class ChatRepositoryImpl implements ChatRepository {
   @override
   Future<void> markLastMessageSeen(
     String roomId,
-  ) {
+  ) 
+  {
     return _dataSource.markLastMessageSeen(roomId);
   }
+// ==========================================================
+// Delivered
+// ==========================================================
 
+@override
+Future<void> markMessageDelivered({
+  required String roomId,
+  required String messageId,
+}) {
+  return _dataSource.markMessageDelivered(
+    roomId: roomId,
+    messageId: messageId,
+  );
+}
+
+// ==========================================================
+// Seen
+// ==========================================================
+
+@override
+Future<void> markMessageSeen({
+  required String roomId,
+  required String messageId,
+}) {
+  return _dataSource.markMessageSeen(
+    roomId: roomId,
+    messageId: messageId,
+  );
+}
   // ==========================================================
   // Delete Message
   // ==========================================================
