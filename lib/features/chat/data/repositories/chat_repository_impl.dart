@@ -25,6 +25,11 @@ class ChatRepositoryImpl implements ChatRepository {
   }
 
   @override
+  Future<bool> chatRoomExists(List<String> participants) {
+    return _dataSource.chatRoomExists(participants);
+  }
+
+  @override
   Stream<List<ChatRoomModel>> chatRoomsStream(
     String userId,
   ) {
@@ -57,45 +62,38 @@ class ChatRepositoryImpl implements ChatRepository {
   }
 
   // ==========================================================
-  // Seen
+  // Seen / Delivered
   // ==========================================================
 
   @override
   Future<void> markLastMessageSeen(
     String roomId,
-  ) 
-  {
+  ) {
     return _dataSource.markLastMessageSeen(roomId);
   }
-// ==========================================================
-// Delivered
-// ==========================================================
 
-@override
-Future<void> markMessageDelivered({
-  required String roomId,
-  required String messageId,
-}) {
-  return _dataSource.markMessageDelivered(
-    roomId: roomId,
-    messageId: messageId,
-  );
-}
+  @override
+  Future<void> markMessageDelivered({
+    required String roomId,
+    required String messageId,
+  }) {
+    return _dataSource.markMessageDelivered(
+      roomId: roomId,
+      messageId: messageId,
+    );
+  }
 
-// ==========================================================
-// Seen
-// ==========================================================
+  @override
+  Future<void> markMessageSeen({
+    required String roomId,
+    required String messageId,
+  }) {
+    return _dataSource.markMessageSeen(
+      roomId: roomId,
+      messageId: messageId,
+    );
+  }
 
-@override
-Future<void> markMessageSeen({
-  required String roomId,
-  required String messageId,
-}) {
-  return _dataSource.markMessageSeen(
-    roomId: roomId,
-    messageId: messageId,
-  );
-}
   // ==========================================================
   // Delete Message
   // ==========================================================

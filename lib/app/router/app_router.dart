@@ -5,9 +5,10 @@ import '../../features/auth/presentation/screens/forgot_password_screen.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/signup_screen.dart';
 import '../../features/chat/presentation/screens/chat_screen.dart';
+import '../../features/chat_requests/presentation/screens/chat_requests_screen.dart';
+import '../../features/contacts/presentation/screens/discover_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
-import '../../features/search/presentation/screens/search_users_screen.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
 import '../../features/splash/presentation/screens/splash_screen.dart';
 
@@ -24,10 +25,34 @@ final class AppRouter {
   static const String signup = '/signup';
   static const String forgotPassword = '/forgot-password';
   static const String home = '/home';
+
+  /// Contacts-based discovery screen — replaces the old
+  /// "browse every registered user" search screen. Kept at this
+  /// same path/const name so nothing else in the app needs to
+  /// change what it links to.
   static const String searchUsers = '/search-users';
+  static const String chatRequests = '/chat-requests';
+
   static const String chat = '/chat';
   static const String profile = '/profile';
   static const String settings = '/settings';
+
+  // ===========================================================
+  // Navigation helpers
+  // ===========================================================
+
+  /// Pops one level if there's somewhere to pop *back* to;
+  /// otherwise falls back to Home instead of doing nothing / letting
+  /// the OS handle (and potentially exit) the app. Use this for
+  /// every in-app back arrow so "back" never gets stuck on a screen
+  /// with an empty stack above it.
+  static void backOrHome(BuildContext context) {
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go(home);
+    }
+  }
 
   // ===========================================================
   // Router
@@ -64,8 +89,13 @@ final class AppRouter {
       ),
       GoRoute(
         path: searchUsers,
-        name: 'search-users',
-        builder: (context, state) => const SearchUsersScreen(),
+        name: 'discover',
+        builder: (context, state) => const DiscoverScreen(),
+      ),
+      GoRoute(
+        path: chatRequests,
+        name: 'chat-requests',
+        builder: (context, state) => const ChatRequestsScreen(),
       ),
       GoRoute(
         path: profile,

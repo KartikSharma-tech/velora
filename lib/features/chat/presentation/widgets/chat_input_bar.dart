@@ -6,6 +6,17 @@ import '../../data/models/message_model.dart';
 /// Bottom message-composer bar: optional reply preview, emoji +
 /// attach icons, growable text field, and a send button that only
 /// lights up once there's text.
+///
+/// BUG FIX (blue border / unprofessional look): the inner `TextField`
+/// only set `border: InputBorder.none`. In Flutter, `border` is just
+/// the *fallback* — `enabledBorder` / `focusedBorder` / `errorBorder`
+/// each independently fall back to the app's global
+/// `InputDecorationTheme` when not set on the widget itself. This
+/// app's theme defines a blue `focusedBorder`, so the instant the
+/// field gained focus, a rectangular blue outline rendered *inside*
+/// the rounded pill container around it. All border variants are now
+/// explicitly set to `InputBorder.none` so nothing from the theme can
+/// leak through.
 class ChatInputBar extends StatelessWidget {
   const ChatInputBar({
     super.key,
@@ -18,6 +29,9 @@ class ChatInputBar extends StatelessWidget {
     this.onCancelReply,
     this.enabled = true,
     this.disabledHint,
+    this.onEmojiTap,
+    this.emojiPickerOpen = false,
+    this.focusNode,
   });
 
   final TextEditingController controller;
@@ -29,11 +43,17 @@ class ChatInputBar extends StatelessWidget {
   final VoidCallback? onCancelReply;
   final bool enabled;
   final String? disabledHint;
+  final VoidCallback? onEmojiTap;
+  final bool emojiPickerOpen;
+  final FocusNode? focusNode;
+
+  static const _noBorder = InputBorder.none;
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final fillColor = isDark ? AppColors.inputFillDark : AppColors.surfaceVariant;
+    final fillColor =
+        isDark ? AppColors.inputFillDark : AppColors.surfaceVariant;
 
     if (!enabled) {
       return SafeArea(
@@ -79,8 +99,9 @@ class ChatInputBar extends StatelessWidget {
           children: [
             if (replyingTo != null)
               Container(
-                margin: const EdgeInsets.fromLTRB(10, 8, 10, 0),
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                margin: const EdgeInsets.fromLTRB(12, 10, 12, 0),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
                   color: fillColor,
                   borderRadius: BorderRadius.circular(10),
@@ -122,42 +143,57 @@ class ChatInputBar extends StatelessWidget {
                 ),
               ),
             Padding(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Expanded(
                     child: Container(
+                      constraints: const BoxConstraints(minHeight: 48),
                       decoration: BoxDecoration(
                         color: fillColor,
                         borderRadius: BorderRadius.circular(26),
                       ),
-                      padding: const EdgeInsets.only(left: 6, right: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           IconButton(
                             tooltip: 'Emoji',
+                            splashRadius: 22,
                             icon: Icon(
-                              Icons.emoji_emotions_outlined,
-                              color: isDark
-                                  ? AppColors.iconSecondaryDark
-                                  : AppColors.iconSecondary,
+                              emojiPickerOpen
+                                  ? Icons.keyboard_alt_outlined
+                                  : Icons.emoji_emotions_outlined,
+                              color: emojiPickerOpen
+                                  ? AppColors.primary
+                                  : (isDark
+                                      ? AppColors.iconSecondaryDark
+                                      : AppColors.iconSecondary),
                             ),
-                            onPressed: () {},
+                            onPressed: onEmojiTap,
                           ),
                           Expanded(
                             child: TextField(
                               controller: controller,
+                              focusNode: focusNode,
                               textCapitalization: TextCapitalization.sentences,
                               minLines: 1,
                               maxLines: 5,
                               style: const TextStyle(fontSize: 15.5),
+                              cursorColor: AppColors.primary,
                               decoration: const InputDecoration(
                                 hintText: 'Message',
-                                border: InputBorder.none,
                                 isCollapsed: true,
-                                contentPadding: EdgeInsets.symmetric(vertical: 14),
+                                filled: false,
+                                contentPadding:
+                                    EdgeInsets.symmetric(vertical: 14),
+                                border: _noBorder,
+                                enabledBorder: _noBorder,
+                                focusedBorder: _noBorder,
+                                disabledBorder: _noBorder,
+                                errorBorder: _noBorder,
+                                focusedErrorBorder: _noBorder,
                               ),
                               onChanged: onChanged,
                               onSubmitted: (_) => onSend(),
@@ -165,6 +201,7 @@ class ChatInputBar extends StatelessWidget {
                           ),
                           IconButton(
                             tooltip: 'Attach',
+                            splashRadius: 22,
                             icon: Icon(
                               Icons.attach_file_rounded,
                               color: isDark
@@ -173,6 +210,7 @@ class ChatInputBar extends StatelessWidget {
                             ),
                             onPressed: onAttachTap ?? () {},
                           ),
+                          const SizedBox(width: 2),
                         ],
                       ),
                     ),
@@ -182,16 +220,21 @@ class ChatInputBar extends StatelessWidget {
                     duration: const Duration(milliseconds: 150),
                     transitionBuilder: (child, animation) =>
                         ScaleTransition(scale: animation, child: child),
-                    child: CircleAvatar(
+                    child: SizedBox(
                       key: ValueKey(hasText),
-                      radius: 24,
-                      backgroundColor: AppColors.primary,
-                      child: IconButton(
-                        onPressed: hasText ? onSend : () {},
-                        icon: Icon(
-                          hasText ? Icons.send_rounded : Icons.mic_rounded,
-                          color: Colors.white,
-                          size: 22,
+                      width: 48,
+                      height: 48,
+                      child: CircleAvatar(
+                        radius: 24,
+                        backgroundColor: AppColors.primary,
+                        child: IconButton(
+                          splashRadius: 22,
+                          onPressed: hasText ? onSend : () {},
+                          icon: Icon(
+                            hasText ? Icons.send_rounded : Icons.mic_rounded,
+                            color: Colors.white,
+                            size: 22,
+                          ),
                         ),
                       ),
                     ),

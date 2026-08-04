@@ -48,6 +48,12 @@ dependencies:
 
   cached_network_image: ^3.4.1
 
+  # Device contacts access for the contacts-based discovery system.
+  # Includes its own permission request flow
+  # (FlutterContacts.requestPermission()), so no separate
+  # permission_handler dependency is needed.
+  flutter_contacts: ^1.1.9+2
+
  
 dev_dependencies:
   flutter_test:

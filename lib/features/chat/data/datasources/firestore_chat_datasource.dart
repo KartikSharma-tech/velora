@@ -44,6 +44,16 @@ class FirestoreChatDataSource {
     return roomId;
   }
 
+  /// Whether a chat room between these two users already exists —
+  /// used to grandfather existing conversations through privacy
+  /// changes (a stricter "who can message me" setting shouldn't cut
+  /// off a conversation that's already happening).
+  Future<bool> chatRoomExists(List<String> participants) async {
+    final sorted = [...participants]..sort();
+    final doc = await _chatRooms.doc(sorted.join('_')).get();
+    return doc.exists;
+  }
+
   // ==========================================================
   // Send Message
   // ==========================================================
@@ -59,47 +69,48 @@ class FirestoreChatDataSource {
     await _chatRooms.doc(message.chatRoomId).update({
       'lastMessage': message.text,
       'lastMessageSenderId': message.senderId,
-      // 'lastMessageTime': message.timestamp.toIso8601String(),
       'lastMessageTime': Timestamp.fromDate(message.timestamp),
       'lastMessageSeen': false,
     });
-  }// ==========================================================
-// Mark Message Delivered
-// ==========================================================
+  }
 
-Future<void> markMessageDelivered({
-  required String roomId,
-  required String messageId,
-  
-}) 
+  // ==========================================================
+  // Mark Message Delivered
+  // ==========================================================
 
-async {
-  await _chatRooms
-      .doc(roomId)
-      .collection('messages')
-      .doc(messageId)
-      .update({
-    'isDelivered': true,
-    'deliveredAt': DateTime.now().toIso8601String(),
-  });
-}
-// ==========================================================
-// Mark Message Seen
-// ==========================================================
+  Future<void> markMessageDelivered({
+    required String roomId,
+    required String messageId,
+  }) async {
+    await _chatRooms.doc(roomId).collection('messages').doc(messageId).update(
+      {
+        'isDelivered': true,
+        'deliveredAt': DateTime.now().toIso8601String(),
+      },
+    );
+  }
 
-Future<void> markMessageSeen({
-  required String roomId,
-  required String messageId,
-}) async {
-  await _chatRooms
-      .doc(roomId)
-      .collection('messages')
-      .doc(messageId)
-      .update({
-    'isSeen': true,
-    'seenAt': DateTime.now().toIso8601String(),
-  });
-}
+  // ==========================================================
+  // Mark Message Seen
+  // ==========================================================
+
+  Future<void> markMessageSeen({
+    required String roomId,
+    required String messageId,
+  }) async {
+    await _chatRooms.doc(roomId).collection('messages').doc(messageId).update(
+      {
+        'isSeen': true,
+        // A read message has necessarily also been delivered —
+        // keep both flags consistent so the tick never goes
+        // "backwards" (blue read-tick with a non-delivered flag
+        // underneath it).
+        'isDelivered': true,
+        'seenAt': DateTime.now().toIso8601String(),
+      },
+    );
+  }
+
   // ==========================================================
   // Messages Stream
   // ==========================================================
@@ -180,7 +191,6 @@ Future<void> markMessageSeen({
                 lastMessageTime: room.lastMessageTime,
                 lastMessageSeen: room.lastMessageSeen,
                 otherUserOnline: user.isOnline,
-                // otherUserLastSeen: user.lastSeen,
                 otherUserLastSeen: user.lastSeen ?? DateTime.now(),
                 isPinned: room.pinnedBy.contains(currentUserId),
               ),

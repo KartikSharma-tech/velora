@@ -11,6 +11,8 @@ abstract class ChatRepository {
     required List<String> participants,
   });
 
+  Future<bool> chatRoomExists(List<String> participants);
+
   Stream<List<ChatRoomModel>> chatRoomsStream(
     String userId,
   );
@@ -32,21 +34,23 @@ abstract class ChatRepository {
   );
 
   // ==========================================================
-  // Seen
+  // Seen / Delivered
   // ==========================================================
 
   Future<void> markLastMessageSeen(
     String roomId,
   );
-Future<void> markMessageDelivered({
-  required String roomId,
-  required String messageId,
-});
 
-Future<void> markMessageSeen({
-  required String roomId,
-  required String messageId,
-});
+  Future<void> markMessageDelivered({
+    required String roomId,
+    required String messageId,
+  });
+
+  Future<void> markMessageSeen({
+    required String roomId,
+    required String messageId,
+  });
+
   // ==========================================================
   // Delete Message
   // ==========================================================

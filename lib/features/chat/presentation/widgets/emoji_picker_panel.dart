@@ -6,7 +6,7 @@ import '../../../../app/theme/app_colors.dart';
 /// package in this project). Slides up under the input bar, WhatsApp
 /// style, and inserts the tapped emoji at the current cursor position.
 ///
-/// BUG FIX: the emoji icon in the composer previously had an empty
+/// BUG FIX: the emoji icon in the composer had an empty
 /// `onPressed: () {}` — visually present but did nothing when tapped.
 class EmojiPickerPanel extends StatelessWidget {
   const EmojiPickerPanel({super.key, required this.onEmojiSelected});

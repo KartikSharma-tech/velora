@@ -136,18 +136,7 @@ class MessageBubble extends StatelessWidget {
                         ),
                         if (isMe) ...[
                           const SizedBox(width: 4),
-
-                          Icon(
-                            message.isSeen
-                                ? Icons.done_all_rounded
-                                : message.isDelivered
-                                ? Icons.done_all_rounded
-                                : Icons.done_rounded,
-                            size: 15,
-                            color: message.isSeen
-                                ? AppColors.seen
-                                : Colors.white.withValues(alpha: .75),
-                          ),
+                          _StatusIcon(status: message.status),
                         ],
                       ],
                     ),
@@ -180,6 +169,48 @@ class MessageBubble extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// Renders the 4-state message status: Sending (clock) → Sent
+/// (single tick) → Delivered (grey double tick) → Read (blue
+/// double tick).
+class _StatusIcon extends StatelessWidget {
+  const _StatusIcon({required this.status});
+
+  final MessageStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    switch (status) {
+      case MessageStatus.sending:
+        return SizedBox(
+          width: 12,
+          height: 12,
+          child: CircularProgressIndicator(
+            strokeWidth: 1.5,
+            color: Colors.white.withValues(alpha: .75),
+          ),
+        );
+      case MessageStatus.sent:
+        return Icon(
+          Icons.done_rounded,
+          size: 15,
+          color: Colors.white.withValues(alpha: .75),
+        );
+      case MessageStatus.delivered:
+        return Icon(
+          Icons.done_all_rounded,
+          size: 15,
+          color: Colors.white.withValues(alpha: .75),
+        );
+      case MessageStatus.read:
+        return Icon(
+          Icons.done_all_rounded,
+          size: 15,
+          color: AppColors.seen,
+        );
+    }
   }
 }
 

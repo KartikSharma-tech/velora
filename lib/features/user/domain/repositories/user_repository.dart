@@ -1,3 +1,4 @@
+import '../../../../shared/enums/privacy_enums.dart';
 import '../../data/models/user_model.dart';
 
 abstract class UserRepository {
@@ -30,5 +31,40 @@ abstract class UserRepository {
   Future<void> unblockUser({
     required String uid,
     required String blockedUid,
+  });
+
+  // ==========================================================
+  // Username
+  // ==========================================================
+
+  Future<bool> isUsernameAvailable(String username, {String? excludeUid});
+
+  Future<void> updateUsername({
+    required String uid,
+    required String username,
+  });
+
+  Future<List<UserModel>> searchByUsername(
+    String query, {
+    required String excludeUid,
+  });
+
+  // ==========================================================
+  // Phone Number
+  // ==========================================================
+
+  Future<void> updatePhoneNumber({
+    required String uid,
+    required String phoneNumber,
+  });
+
+  // ==========================================================
+  // Privacy Settings
+  // ==========================================================
+
+  Future<void> updatePrivacySettings({
+    required String uid,
+    required WhoCanMessage whoCanMessage,
+    required Discoverability discoverability,
   });
 }

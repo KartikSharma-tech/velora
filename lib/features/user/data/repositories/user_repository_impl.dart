@@ -1,6 +1,8 @@
+import '../../../../shared/enums/privacy_enums.dart';
 import '../../domain/repositories/user_repository.dart';
 import '../datasources/firestore_user_datasource.dart';
 import '../models/user_model.dart';
+
 class UserRepositoryImpl implements UserRepository {
   UserRepositoryImpl({
     required this._dataSource,
@@ -75,5 +77,47 @@ class UserRepositoryImpl implements UserRepository {
     required String blockedUid,
   }) {
     return _dataSource.unblockUser(uid: uid, blockedUid: blockedUid);
+  }
+
+  @override
+  Future<bool> isUsernameAvailable(String username, {String? excludeUid}) {
+    return _dataSource.isUsernameAvailable(username, excludeUid: excludeUid);
+  }
+
+  @override
+  Future<void> updateUsername({
+    required String uid,
+    required String username,
+  }) {
+    return _dataSource.updateUsername(uid: uid, username: username);
+  }
+
+  @override
+  Future<List<UserModel>> searchByUsername(
+    String query, {
+    required String excludeUid,
+  }) {
+    return _dataSource.searchByUsername(query, excludeUid: excludeUid);
+  }
+
+  @override
+  Future<void> updatePhoneNumber({
+    required String uid,
+    required String phoneNumber,
+  }) {
+    return _dataSource.updatePhoneNumber(uid: uid, phoneNumber: phoneNumber);
+  }
+
+  @override
+  Future<void> updatePrivacySettings({
+    required String uid,
+    required WhoCanMessage whoCanMessage,
+    required Discoverability discoverability,
+  }) {
+    return _dataSource.updatePrivacySettings(
+      uid: uid,
+      whoCanMessage: whoCanMessage,
+      discoverability: discoverability,
+    );
   }
 }
