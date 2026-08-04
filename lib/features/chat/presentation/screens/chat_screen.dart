@@ -248,9 +248,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         setState(() {
           _pendingMessages.removeWhere((m) => m.id == message.id);
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Message failed to send')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Message failed to send')));
       }
     }
   }
@@ -343,8 +343,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   },
                 ),
               ListTile(
-                leading:
-                    const Icon(Icons.delete_outline_rounded, color: AppColors.error),
+                leading: const Icon(
+                  Icons.delete_outline_rounded,
+                  color: AppColors.error,
+                ),
                 title: Text(
                   'Delete for me',
                   style: TextStyle(color: AppColors.error),
@@ -360,8 +362,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               ),
               if (isMe)
                 ListTile(
-                  leading: const Icon(Icons.delete_forever_rounded,
-                      color: AppColors.error),
+                  leading: const Icon(
+                    Icons.delete_forever_rounded,
+                    color: AppColors.error,
+                  ),
                   title: Text(
                     'Delete for everyone',
                     style: TextStyle(color: AppColors.error),
@@ -481,7 +485,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 onToggleBlock: () => _toggleBlock(iHaveBlockedThem),
                 onSearchTap: () => setState(() => _isSearching = true),
               ),
-        backgroundColor: isDark ? AppColors.backgroundDark : AppColors.background,
+        backgroundColor: isDark
+            ? AppColors.backgroundDark
+            : AppColors.background,
         body: messagesAsync.when(
           data: (streamMessages) {
             final allMessages = [...streamMessages, ..._pendingMessages]
@@ -490,16 +496,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             final messages = currentUserId == null
                 ? allMessages
                 : allMessages
-                    .where((m) => m.isVisibleTo(currentUserId))
-                    .toList();
+                      .where((m) => m.isVisibleTo(currentUserId))
+                      .toList();
 
             final visibleMessages = _searchQuery.isEmpty
                 ? messages
                 : messages
-                    .where((m) => m.text
-                        .toLowerCase()
-                        .contains(_searchQuery.toLowerCase()))
-                    .toList();
+                      .where(
+                        (m) => m.text.toLowerCase().contains(
+                          _searchQuery.toLowerCase(),
+                        ),
+                      )
+                      .toList();
 
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (_searchQuery.isEmpty && _scrollController.hasClients) {
@@ -524,9 +532,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               onEmojiTap: _toggleEmojiPicker,
               emojiPickerOpen: _showEmojiPicker,
               onAttachTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Coming soon')),
-                );
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(const SnackBar(content: Text('Coming soon')));
               },
             );
 
@@ -588,7 +596,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       final message = visibleMessages[index];
                       final isMe = message.senderId == currentUserId;
 
-                      final showDateSeparator = _searchQuery.isEmpty &&
+                      final showDateSeparator =
+                          _searchQuery.isEmpty &&
                           (index == 0 ||
                               AppFormatters.isDifferentDay(
                                 visibleMessages[index - 1].timestamp,
@@ -604,7 +613,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                             message: message,
                             isMe: isMe,
                             highlighted: _searchQuery.isNotEmpty,
-                            onLongPress: message.isDeletedForEveryone ||
+                            onLongPress:
+                                message.isDeletedForEveryone ||
                                     message.isPending
                                 ? null
                                 : () => _openMessageActions(message, isMe),

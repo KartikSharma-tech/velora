@@ -4,12 +4,14 @@ import '../models/chat_room_model.dart';
 import '../models/message_model.dart';
 import '../models/chat_tile_model.dart';
 import '../../../user/data/models/user_model.dart';
-
+import 'dart:io';
+import 'package:firebase_storage/firebase_storage.dart';
 class FirestoreChatDataSource {
   FirestoreChatDataSource({FirebaseFirestore? firestore})
     : _firestore = firestore ?? FirebaseFirestore.instance;
 
   final FirebaseFirestore _firestore;
+  final FirebaseStorage _storage = FirebaseStorage.instance;
 
   CollectionReference<Map<String, dynamic>> get _chatRooms =>
       _firestore.collection('chat_rooms');

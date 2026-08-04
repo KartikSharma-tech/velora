@@ -1,7 +1,7 @@
 import '../../data/models/chat_room_model.dart';
 import '../../data/models/chat_tile_model.dart';
 import '../../data/models/message_model.dart';
-
+import 'dart:io';
 abstract class ChatRepository {
   // ==========================================================
   // Chat Room
@@ -28,7 +28,8 @@ abstract class ChatRepository {
   Future<void> sendMessage(
     MessageModel message,
   );
-
+  // For Image Upload /
+  
   Stream<List<MessageModel>> messageStream(
     String roomId,
   );
