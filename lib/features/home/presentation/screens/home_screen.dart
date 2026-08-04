@@ -32,10 +32,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     try {
       final uid = ref.read(currentUserIdProvider);
       if (uid != null) {
-        await ref.read(userRepositoryProvider).setOnlineStatus(
-              uid: uid,
-              isOnline: false,
-            );
+        await ref
+            .read(userRepositoryProvider)
+            .setOnlineStatus(uid: uid, isOnline: false);
       }
 
       await ref.read(authRepositoryProvider).signOut();
@@ -292,7 +291,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           );
                         },
                         onLongPress: () {
-                          ref.read(chatRepositoryProvider).togglePinChat(
+                          ref
+                              .read(chatRepositoryProvider)
+                              .togglePinChat(
                                 roomId: chat.roomId,
                                 userId: userId,
                                 pin: !chat.isPinned,
@@ -346,7 +347,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 chat.otherUserName,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(fontWeight: FontWeight.w600),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
                             if (chat.isPinned) ...[
