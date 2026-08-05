@@ -23,6 +23,15 @@ abstract class ChatRepository {
 
   // ==========================================================
   // Messages
+  Future<String> uploadChatImage({
+  required File imageFile,
+  required String roomId,
+  required String messageId,
+});
+
+Future<void> sendImageMessage(
+  MessageModel message,
+);
   // ==========================================================
 
   Future<void> sendMessage(

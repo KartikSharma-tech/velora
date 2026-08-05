@@ -5,7 +5,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
+import 'dart:io';
 
+import 'package:image_picker/image_picker.dart';
 import '../../../../app/router/app_router.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/utils/formatters.dart';
@@ -39,6 +41,9 @@ class ChatScreen extends ConsumerStatefulWidget {
 }
 
 class _ChatScreenState extends ConsumerState<ChatScreen> {
+  final ImagePicker _imagePicker = ImagePicker();
+
+bool _isUploadingImage = false;
   final TextEditingController _messageController = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
@@ -200,6 +205,103 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   // ============================================================
   // Send
+  
+  Future<void> _showAttachmentOptions() async {
+  showModalBottomSheet(
+    context: context,
+    builder: (context) {
+      return SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text("Gallery"),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(ImageSource.gallery);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.camera_alt),
+              title: const Text("Camera"),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(ImageSource.camera);
+              },
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
+
+Future<void> _pickImage(ImageSource source) async {
+  final pickedFile = await _imagePicker.pickImage(
+    source: source,
+    imageQuality: 80,
+  );
+
+  if (pickedFile == null) return;
+
+  final senderId = _currentUserId;
+  if (senderId == null) return;
+
+  setState(() {
+    _isUploadingImage = true;
+  });
+
+  try {
+    final messageId = const Uuid().v4();
+
+    final imageUrl = await _chatRepository.uploadChatImage(
+      imageFile: File(pickedFile.path),
+      roomId: widget.roomId,
+      messageId: messageId,
+    );
+
+    final message = MessageModel(
+      id: messageId,
+      chatRoomId: widget.roomId,
+      senderId: senderId,
+      receiverId: widget.receiverId,
+      text: '',
+      type: 'image',
+      imageUrl: imageUrl,
+      timestamp: DateTime.now(),
+      isSeen: false,
+      replyToId: _replyingTo?.id,
+      replyToText: _replyingTo?.text,
+      replyToSenderName: _replyingTo == null
+          ? null
+          : (_replyingTo!.senderId == senderId
+              ? 'You'
+              : widget.receiverName),
+    );
+
+    await _chatRepository.sendImageMessage(message);
+
+    setState(() {
+      _replyingTo = null;
+    });
+
+    _scrollToBottom();
+  } catch (e) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Image upload failed\n$e'),
+        ),
+      );
+    }
+  } finally {
+    if (mounted) {
+      setState(() {
+        _isUploadingImage = false;
+      });
+    }
+  }
+}
   // ============================================================
 
   Future<void> _sendMessage() async {
@@ -531,11 +633,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   : "You can't message this user",
               onEmojiTap: _toggleEmojiPicker,
               emojiPickerOpen: _showEmojiPicker,
-              onAttachTap: () {
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(const SnackBar(content: Text('Coming soon')));
-              },
+             onAttachTap: _showAttachmentOptions,
             );
 
             final emojiPanel = _showEmojiPicker

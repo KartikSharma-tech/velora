@@ -5,6 +5,7 @@ import '../models/message_model.dart';
 import '../models/chat_tile_model.dart';
 import '../../../user/data/models/user_model.dart';
 import 'dart:io';
+// import 'dart:io';pchat_repository_impl
 import 'package:firebase_storage/firebase_storage.dart';
 class FirestoreChatDataSource {
   FirestoreChatDataSource({FirebaseFirestore? firestore})
@@ -75,7 +76,39 @@ class FirestoreChatDataSource {
       'lastMessageSeen': false,
     });
   }
+Future<String> uploadChatImage({
+  required File imageFile,
+  required String roomId,
+  required String messageId,
+}) async {
+  final ref = _storage
+      .ref()
+      .child('chat_images')
+      .child(roomId)
+      .child('$messageId.jpg');
 
+  final task = await ref.putFile(imageFile);
+
+  return await task.ref.getDownloadURL();
+}
+
+Future<void> sendImageMessage(
+  MessageModel message,
+) async {
+  final messageRef = _chatRooms
+      .doc(message.chatRoomId)
+      .collection('messages')
+      .doc(message.id);
+
+  await messageRef.set(message.toMap());
+
+  await _chatRooms.doc(message.chatRoomId).update({
+    'lastMessage': '📷 Photo',
+    'lastMessageSenderId': message.senderId,
+    'lastMessageTime': Timestamp.fromDate(message.timestamp),
+    'lastMessageSeen': false,
+  });
+}
   // ==========================================================
   // Mark Message Delivered
   // ==========================================================

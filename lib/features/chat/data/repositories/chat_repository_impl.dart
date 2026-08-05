@@ -3,6 +3,7 @@ import '../datasources/firestore_chat_datasource.dart';
 import '../models/chat_room_model.dart';
 import '../models/chat_tile_model.dart';
 import '../models/message_model.dart';
+import 'dart:io';
 
 class ChatRepositoryImpl implements ChatRepository {
   ChatRepositoryImpl({
@@ -53,6 +54,25 @@ class ChatRepositoryImpl implements ChatRepository {
   ) {
     return _dataSource.sendMessage(message);
   }
+  @override
+Future<String> uploadChatImage({
+  required File imageFile,
+  required String roomId,
+  required String messageId,
+}) {
+  return _dataSource.uploadChatImage(
+    imageFile: imageFile,
+    roomId: roomId,
+    messageId: messageId,
+  );
+}
+
+@override
+Future<void> sendImageMessage(
+  MessageModel message,
+) {
+  return _dataSource.sendImageMessage(message);
+}
 
   @override
   Stream<List<MessageModel>> messageStream(

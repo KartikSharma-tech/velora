@@ -8,6 +8,7 @@
 /// case of the same number being saved with/without a country
 /// code, spaces, dashes, or parentheses).
 /// ===========================================================
+library;
 
 class PhoneUtils {
   const PhoneUtils._();

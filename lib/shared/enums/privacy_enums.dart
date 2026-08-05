@@ -5,6 +5,7 @@
 /// old/unknown values never crash a `fromMap()` — they just fall
 /// back to a safe default via [orDefault].
 /// ===========================================================
+library;
 
 enum WhoCanMessage {
   anyone('anyone'),
