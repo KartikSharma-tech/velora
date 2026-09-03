@@ -7,8 +7,8 @@ import '../../../user/domain/repositories/user_repository.dart';
 class AuthRepositoryImpl implements AuthRepository {
   AuthRepositoryImpl({
     required this._remoteDataSource,
-    required this._userRepository,
-  });
+    required UserRepository userRepository,
+  })  : _userRepository = userRepository;
 
   final FirebaseAuthDataSource _remoteDataSource;
   final UserRepository _userRepository;

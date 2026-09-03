@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../app/router/app_router.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../user/presentation/providers/user_provider.dart';
@@ -42,11 +41,6 @@ class ChatAppBar extends ConsumerWidget implements PreferredSizeWidget {
 
     return AppBar(
       titleSpacing: 0,
-      leading: IconButton(
-        tooltip: 'Back',
-        icon: const Icon(Icons.arrow_back_rounded),
-        onPressed: () => AppRouter.backOrHome(context),
-      ),
       title: receiverAsync.when(
         data: (user) {
           final photoUrl = user?.photoUrl ?? '';

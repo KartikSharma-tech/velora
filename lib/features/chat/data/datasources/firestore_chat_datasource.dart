@@ -1,18 +1,22 @@
+import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../../core/services/cloudinary_service.dart';
 import '../models/chat_room_model.dart';
 import '../models/message_model.dart';
 import '../models/chat_tile_model.dart';
 import '../../../user/data/models/user_model.dart';
-import 'dart:io';
-// import 'dart:io';pchat_repository_impl
-import 'package:firebase_storage/firebase_storage.dart';
+
 class FirestoreChatDataSource {
-  FirestoreChatDataSource({FirebaseFirestore? firestore})
-    : _firestore = firestore ?? FirebaseFirestore.instance;
+  FirestoreChatDataSource({
+    FirebaseFirestore? firestore,
+    CloudinaryService? cloudinary,
+  }) : _firestore = firestore ?? FirebaseFirestore.instance,
+       _cloudinary = cloudinary ?? const CloudinaryService();
 
   final FirebaseFirestore _firestore;
-  final FirebaseStorage _storage = FirebaseStorage.instance;
+  final CloudinaryService _cloudinary;
 
   CollectionReference<Map<String, dynamic>> get _chatRooms =>
       _firestore.collection('chat_rooms');
@@ -47,16 +51,6 @@ class FirestoreChatDataSource {
     return roomId;
   }
 
-  /// Whether a chat room between these two users already exists —
-  /// used to grandfather existing conversations through privacy
-  /// changes (a stricter "who can message me" setting shouldn't cut
-  /// off a conversation that's already happening).
-  Future<bool> chatRoomExists(List<String> participants) async {
-    final sorted = [...participants]..sort();
-    final doc = await _chatRooms.doc(sorted.join('_')).get();
-    return doc.exists;
-  }
-
   // ==========================================================
   // Send Message
   // ==========================================================
@@ -69,83 +63,53 @@ class FirestoreChatDataSource {
 
     await messageRef.set(message.toMap());
 
+    final previewText = message.type == 'image' && message.text.isEmpty
+        ? '📷 Photo'
+        : message.text;
+
     await _chatRooms.doc(message.chatRoomId).update({
-      'lastMessage': message.text,
+      'lastMessage': previewText,
       'lastMessageSenderId': message.senderId,
       'lastMessageTime': Timestamp.fromDate(message.timestamp),
       'lastMessageSeen': false,
     });
-  }
-Future<String> uploadChatImage({
-  required File imageFile,
+  }// ==========================================================
+// Mark Message Delivered
+// ==========================================================
+
+Future<void> markMessageDelivered({
+  required String roomId,
+  required String messageId,
+  
+}) 
+
+async {
+  await _chatRooms
+      .doc(roomId)
+      .collection('messages')
+      .doc(messageId)
+      .update({
+    'isDelivered': true,
+    'deliveredAt': DateTime.now().toIso8601String(),
+  });
+}
+// ==========================================================
+// Mark Message Seen
+// ==========================================================
+
+Future<void> markMessageSeen({
   required String roomId,
   required String messageId,
 }) async {
-  final ref = _storage
-      .ref()
-      .child('chat_images')
-      .child(roomId)
-      .child('$messageId.jpg');
-
-  final task = await ref.putFile(imageFile);
-
-  return await task.ref.getDownloadURL();
-}
-
-Future<void> sendImageMessage(
-  MessageModel message,
-) async {
-  final messageRef = _chatRooms
-      .doc(message.chatRoomId)
+  await _chatRooms
+      .doc(roomId)
       .collection('messages')
-      .doc(message.id);
-
-  await messageRef.set(message.toMap());
-
-  await _chatRooms.doc(message.chatRoomId).update({
-    'lastMessage': '📷 Photo',
-    'lastMessageSenderId': message.senderId,
-    'lastMessageTime': Timestamp.fromDate(message.timestamp),
-    'lastMessageSeen': false,
+      .doc(messageId)
+      .update({
+    'isSeen': true,
+    'seenAt': DateTime.now().toIso8601String(),
   });
 }
-  // ==========================================================
-  // Mark Message Delivered
-  // ==========================================================
-
-  Future<void> markMessageDelivered({
-    required String roomId,
-    required String messageId,
-  }) async {
-    await _chatRooms.doc(roomId).collection('messages').doc(messageId).update(
-      {
-        'isDelivered': true,
-        'deliveredAt': DateTime.now().toIso8601String(),
-      },
-    );
-  }
-
-  // ==========================================================
-  // Mark Message Seen
-  // ==========================================================
-
-  Future<void> markMessageSeen({
-    required String roomId,
-    required String messageId,
-  }) async {
-    await _chatRooms.doc(roomId).collection('messages').doc(messageId).update(
-      {
-        'isSeen': true,
-        // A read message has necessarily also been delivered —
-        // keep both flags consistent so the tick never goes
-        // "backwards" (blue read-tick with a non-delivered flag
-        // underneath it).
-        'isDelivered': true,
-        'seenAt': DateTime.now().toIso8601String(),
-      },
-    );
-  }
-
   // ==========================================================
   // Messages Stream
   // ==========================================================
@@ -226,6 +190,7 @@ Future<void> sendImageMessage(
                 lastMessageTime: room.lastMessageTime,
                 lastMessageSeen: room.lastMessageSeen,
                 otherUserOnline: user.isOnline,
+                // otherUserLastSeen: user.lastSeen,
                 otherUserLastSeen: user.lastSeen ?? DateTime.now(),
                 isPinned: room.pinnedBy.contains(currentUserId),
               ),
@@ -330,5 +295,26 @@ Future<void> sendImageMessage(
           ? FieldValue.arrayUnion([userId])
           : FieldValue.arrayRemove([userId]),
     });
+  }
+
+  // ==========================================================
+  // Image Upload
+  // ==========================================================
+
+  /// Uploads a local image file to
+  /// `chat_images/{roomId}/{messageId}.jpg` in Firebase Storage
+  /// and returns its public download URL. Called *before*
+  /// `sendMessage()` — the resulting URL is what actually gets
+  /// saved on the message doc.
+  Future<String> uploadChatImage({
+    required String roomId,
+    required String messageId,
+    required File file,
+  }) async {
+    return _cloudinary.uploadImage(
+      file: file,
+      folder: 'chat_images/$roomId',
+      publicId: messageId,
+    );
   }
 }

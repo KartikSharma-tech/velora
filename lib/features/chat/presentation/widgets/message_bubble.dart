@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../app/theme/app_colors.dart';
@@ -118,14 +119,40 @@ class MessageBubble extends StatelessWidget {
                           ],
                         ),
                       ),
-                    Text(
-                      message.text,
-                      style: TextStyle(
-                        color: textColor,
-                        fontSize: 15.5,
-                        height: 1.3,
+                    if (message.imageUrl != null &&
+                        message.imageUrl!.isNotEmpty)
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: CachedNetworkImage(
+                          imageUrl: message.imageUrl!,
+                          fit: BoxFit.cover,
+                          width: 220,
+                          height: 220,
+                          placeholder: (context, url) => Container(
+                            width: 220,
+                            height: 220,
+                            alignment: Alignment.center,
+                            child: const CircularProgressIndicator(
+                              strokeWidth: 2,
+                            ),
+                          ),
+                          errorWidget: (context, url, error) => Container(
+                            width: 220,
+                            height: 220,
+                            alignment: Alignment.center,
+                            child: const Icon(Icons.broken_image_outlined),
+                          ),
+                        ),
+                      )
+                    else
+                      Text(
+                        message.text,
+                        style: TextStyle(
+                          color: textColor,
+                          fontSize: 15.5,
+                          height: 1.3,
+                        ),
                       ),
-                    ),
                     const SizedBox(height: 3),
                     Row(
                       mainAxisSize: MainAxisSize.min,
@@ -136,7 +163,18 @@ class MessageBubble extends StatelessWidget {
                         ),
                         if (isMe) ...[
                           const SizedBox(width: 4),
-                          _StatusIcon(status: message.status),
+
+                          Icon(
+                            message.isSeen
+                                ? Icons.done_all_rounded
+                                : message.isDelivered
+                                ? Icons.done_all_rounded
+                                : Icons.done_rounded,
+                            size: 15,
+                            color: message.isSeen
+                                ? AppColors.seen
+                                : Colors.white.withValues(alpha: .75),
+                          ),
                         ],
                       ],
                     ),
@@ -169,48 +207,6 @@ class MessageBubble extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-/// Renders the 4-state message status: Sending (clock) → Sent
-/// (single tick) → Delivered (grey double tick) → Read (blue
-/// double tick).
-class _StatusIcon extends StatelessWidget {
-  const _StatusIcon({required this.status});
-
-  final MessageStatus status;
-
-  @override
-  Widget build(BuildContext context) {
-    switch (status) {
-      case MessageStatus.sending:
-        return SizedBox(
-          width: 12,
-          height: 12,
-          child: CircularProgressIndicator(
-            strokeWidth: 1.5,
-            color: Colors.white.withValues(alpha: .75),
-          ),
-        );
-      case MessageStatus.sent:
-        return Icon(
-          Icons.done_rounded,
-          size: 15,
-          color: Colors.white.withValues(alpha: .75),
-        );
-      case MessageStatus.delivered:
-        return Icon(
-          Icons.done_all_rounded,
-          size: 15,
-          color: Colors.white.withValues(alpha: .75),
-        );
-      case MessageStatus.read:
-        return Icon(
-          Icons.done_all_rounded,
-          size: 15,
-          color: AppColors.seen,
-        );
-    }
   }
 }
 

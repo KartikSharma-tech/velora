@@ -1,7 +1,9 @@
+import 'dart:io';
+
 import '../../data/models/chat_room_model.dart';
 import '../../data/models/chat_tile_model.dart';
 import '../../data/models/message_model.dart';
-import 'dart:io';
+
 abstract class ChatRepository {
   // ==========================================================
   // Chat Room
@@ -10,8 +12,6 @@ abstract class ChatRepository {
   Future<String> createChatRoom({
     required List<String> participants,
   });
-
-  Future<bool> chatRoomExists(List<String> participants);
 
   Stream<List<ChatRoomModel>> chatRoomsStream(
     String userId,
@@ -23,44 +23,32 @@ abstract class ChatRepository {
 
   // ==========================================================
   // Messages
-  Future<String> uploadChatImage({
-  required File imageFile,
-  required String roomId,
-  required String messageId,
-});
-
-Future<void> sendImageMessage(
-  MessageModel message,
-);
   // ==========================================================
 
   Future<void> sendMessage(
     MessageModel message,
   );
-  // For Image Upload /
-  
+
   Stream<List<MessageModel>> messageStream(
     String roomId,
   );
 
   // ==========================================================
-  // Seen / Delivered
+  // Seen
   // ==========================================================
 
   Future<void> markLastMessageSeen(
     String roomId,
   );
+Future<void> markMessageDelivered({
+  required String roomId,
+  required String messageId,
+});
 
-  Future<void> markMessageDelivered({
-    required String roomId,
-    required String messageId,
-  });
-
-  Future<void> markMessageSeen({
-    required String roomId,
-    required String messageId,
-  });
-
+Future<void> markMessageSeen({
+  required String roomId,
+  required String messageId,
+});
   // ==========================================================
   // Delete Message
   // ==========================================================
@@ -107,5 +95,15 @@ Future<void> sendImageMessage(
     required String roomId,
     required String userId,
     required bool pin,
+  });
+
+  // ==========================================================
+  // Image Upload
+  // ==========================================================
+
+  Future<String> uploadChatImage({
+    required String roomId,
+    required String messageId,
+    required File file,
   });
 }

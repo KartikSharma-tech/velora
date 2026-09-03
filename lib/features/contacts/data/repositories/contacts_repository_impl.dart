@@ -7,8 +7,8 @@ import '../models/matched_contact_model.dart';
 class ContactsRepositoryImpl implements ContactsRepository {
   ContactsRepositoryImpl({
     required this._deviceDataSource,
-    required FirestoreContactsMatchDataSource matchDataSource,
-  })  : _matchDataSource = matchDataSource;
+    required this._matchDataSource,
+  });
 
   final DeviceContactsDataSource _deviceDataSource;
   final FirestoreContactsMatchDataSource _matchDataSource;

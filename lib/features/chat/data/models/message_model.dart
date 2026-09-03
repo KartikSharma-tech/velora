@@ -1,5 +1,3 @@
-enum MessageStatus { sending, sent, delivered, read }
-
 class MessageModel {
   final String id;
   final String chatRoomId;
@@ -27,12 +25,6 @@ class MessageModel {
   /// Emoji reactions: userId -> emoji.
   final Map<String, String> reactions;
 
-  /// Local-only flag for the optimistic bubble shown the instant
-  /// "Send" is tapped, before the Firestore write confirms. Never
-  /// read from / written to Firestore — always `false` for any
-  /// message that came from a stream snapshot.
-  final bool isPending;
-
   const MessageModel({
     required this.id,
     required this.chatRoomId,
@@ -52,17 +44,7 @@ class MessageModel {
     this.deletedFor = const [],
     this.isDeletedForEveryone = false,
     this.reactions = const {},
-    this.isPending = false,
   });
-
-  /// Sending → Sent → Delivered → Read, derived from the persisted
-  /// booleans/flags (no extra Firestore field needed).
-  MessageStatus get status {
-    if (isPending) return MessageStatus.sending;
-    if (isSeen) return MessageStatus.read;
-    if (isDelivered) return MessageStatus.delivered;
-    return MessageStatus.sent;
-  }
 
   factory MessageModel.fromMap(Map<String, dynamic> map) {
     return MessageModel(
@@ -75,9 +57,11 @@ class MessageModel {
       timestamp: DateTime.parse(map['timestamp']),
       isSeen: map['isSeen'] ?? false,
       isDelivered: map['isDelivered'] ?? false,
+
       deliveredAt: map['deliveredAt'] != null
           ? DateTime.parse(map['deliveredAt'])
           : null,
+
       seenAt: map['seenAt'] != null ? DateTime.parse(map['seenAt']) : null,
       imageUrl: map['imageUrl'],
       replyToId: map['replyToId'],
@@ -102,6 +86,7 @@ class MessageModel {
       'isDelivered': isDelivered,
       'deliveredAt': deliveredAt?.toIso8601String(),
       'seenAt': seenAt?.toIso8601String(),
+
       'imageUrl': imageUrl,
       'replyToId': replyToId,
       'replyToText': replyToText,
@@ -115,12 +100,6 @@ class MessageModel {
   /// Whether [userId] can still see this message in their thread.
   bool isVisibleTo(String userId) => !deletedFor.contains(userId);
 
-  /// BUG FIX: `copyWith` used to accept `isDelivered`, `deliveredAt`
-  /// and `seenAt` as parameters but never actually passed them into
-  /// the returned `MessageModel(...)` — they were silently dropped
-  /// every time. That's why delivered/read status could regress
-  /// back to "sent" whenever a message got copied (e.g. when
-  /// building the reply-preview draft in chat_screen.dart).
   MessageModel copyWith({
     String? id,
     String? chatRoomId,
@@ -140,7 +119,6 @@ class MessageModel {
     List<String>? deletedFor,
     bool? isDeletedForEveryone,
     Map<String, String>? reactions,
-    bool? isPending,
   }) {
     return MessageModel(
       id: id ?? this.id,
@@ -151,9 +129,6 @@ class MessageModel {
       type: type ?? this.type,
       timestamp: timestamp ?? this.timestamp,
       isSeen: isSeen ?? this.isSeen,
-      isDelivered: isDelivered ?? this.isDelivered,
-      deliveredAt: deliveredAt ?? this.deliveredAt,
-      seenAt: seenAt ?? this.seenAt,
       imageUrl: imageUrl ?? this.imageUrl,
       replyToId: replyToId ?? this.replyToId,
       replyToText: replyToText ?? this.replyToText,
@@ -161,7 +136,6 @@ class MessageModel {
       deletedFor: deletedFor ?? this.deletedFor,
       isDeletedForEveryone: isDeletedForEveryone ?? this.isDeletedForEveryone,
       reactions: reactions ?? this.reactions,
-      isPending: isPending ?? this.isPending,
     );
   }
 }

@@ -1,9 +1,10 @@
+import 'dart:io';
+
 import '../../domain/repositories/chat_repository.dart';
 import '../datasources/firestore_chat_datasource.dart';
 import '../models/chat_room_model.dart';
 import '../models/chat_tile_model.dart';
 import '../models/message_model.dart';
-import 'dart:io';
 
 class ChatRepositoryImpl implements ChatRepository {
   ChatRepositoryImpl({
@@ -23,11 +24,6 @@ class ChatRepositoryImpl implements ChatRepository {
     return _dataSource.createChatRoom(
       participants: participants,
     );
-  }
-
-  @override
-  Future<bool> chatRoomExists(List<String> participants) {
-    return _dataSource.chatRoomExists(participants);
   }
 
   @override
@@ -54,25 +50,6 @@ class ChatRepositoryImpl implements ChatRepository {
   ) {
     return _dataSource.sendMessage(message);
   }
-  @override
-Future<String> uploadChatImage({
-  required File imageFile,
-  required String roomId,
-  required String messageId,
-}) {
-  return _dataSource.uploadChatImage(
-    imageFile: imageFile,
-    roomId: roomId,
-    messageId: messageId,
-  );
-}
-
-@override
-Future<void> sendImageMessage(
-  MessageModel message,
-) {
-  return _dataSource.sendImageMessage(message);
-}
 
   @override
   Stream<List<MessageModel>> messageStream(
@@ -82,38 +59,45 @@ Future<void> sendImageMessage(
   }
 
   // ==========================================================
-  // Seen / Delivered
+  // Seen
   // ==========================================================
 
   @override
   Future<void> markLastMessageSeen(
     String roomId,
-  ) {
+  ) 
+  {
     return _dataSource.markLastMessageSeen(roomId);
   }
+// ==========================================================
+// Delivered
+// ==========================================================
 
-  @override
-  Future<void> markMessageDelivered({
-    required String roomId,
-    required String messageId,
-  }) {
-    return _dataSource.markMessageDelivered(
-      roomId: roomId,
-      messageId: messageId,
-    );
-  }
+@override
+Future<void> markMessageDelivered({
+  required String roomId,
+  required String messageId,
+}) {
+  return _dataSource.markMessageDelivered(
+    roomId: roomId,
+    messageId: messageId,
+  );
+}
 
-  @override
-  Future<void> markMessageSeen({
-    required String roomId,
-    required String messageId,
-  }) {
-    return _dataSource.markMessageSeen(
-      roomId: roomId,
-      messageId: messageId,
-    );
-  }
+// ==========================================================
+// Seen
+// ==========================================================
 
+@override
+Future<void> markMessageSeen({
+  required String roomId,
+  required String messageId,
+}) {
+  return _dataSource.markMessageSeen(
+    roomId: roomId,
+    messageId: messageId,
+  );
+}
   // ==========================================================
   // Delete Message
   // ==========================================================
@@ -194,5 +178,22 @@ Future<void> sendImageMessage(
     required bool pin,
   }) {
     return _dataSource.togglePinChat(roomId: roomId, userId: userId, pin: pin);
+  }
+
+  // ==========================================================
+  // Image Upload
+  // ==========================================================
+
+  @override
+  Future<String> uploadChatImage({
+    required String roomId,
+    required String messageId,
+    required File file,
+  }) {
+    return _dataSource.uploadChatImage(
+      roomId: roomId,
+      messageId: messageId,
+      file: file,
+    );
   }
 }
