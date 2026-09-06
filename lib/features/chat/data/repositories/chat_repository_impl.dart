@@ -20,11 +20,19 @@ class ChatRepositoryImpl implements ChatRepository {
   @override
   Future<String> createChatRoom({
     required List<String> participants,
-  }) {
+  }
+  
+  ) {
     return _dataSource.createChatRoom(
       participants: participants,
     );
   }
+  @override
+Future<bool> chatRoomExists(
+  List<String> participants,
+) {
+  return _dataSource.chatRoomExists(participants);
+}
 
   @override
   Stream<List<ChatRoomModel>> chatRoomsStream(

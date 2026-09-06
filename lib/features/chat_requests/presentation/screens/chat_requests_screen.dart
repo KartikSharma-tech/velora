@@ -19,8 +19,10 @@ class ChatRequestsScreen extends ConsumerStatefulWidget {
 
 class _ChatRequestsScreenState extends ConsumerState<ChatRequestsScreen>
     with SingleTickerProviderStateMixin {
-  late final TabController _tabController =
-      TabController(length: 2, vsync: this);
+  late final TabController _tabController = TabController(
+    length: 2,
+    vsync: this,
+  );
 
   @override
   void dispose() {
@@ -29,21 +31,23 @@ class _ChatRequestsScreenState extends ConsumerState<ChatRequestsScreen>
   }
 
   Future<void> _respond(ChatRequestModel request, bool accept) async {
-    await ref.read(chatRequestRepositoryProvider).respondToRequest(
-          requestId: request.id,
-          accept: accept,
-        );
+    await ref
+        .read(chatRequestRepositoryProvider)
+        .respondToRequest(requestId: request.id, accept: accept);
 
     if (accept) {
-      await ref.read(chatRepositoryProvider).createChatRoom(
-        participants: [request.fromUserId, request.toUserId],
-      );
+      await ref
+          .read(chatRepositoryProvider)
+          .createChatRoom(participants: [request.fromUserId, request.toUserId]);
 
       if (mounted) {
         context.push(
           AppRouter.chat,
           extra: {
-            'roomId': ([request.fromUserId, request.toUserId]..sort()).join('_'),
+            'roomId': ([
+              request.fromUserId,
+              request.toUserId,
+            ]..sort()).join('_'),
             'receiverId': request.fromUserId,
             'receiverName': request.fromUserName,
           },
@@ -72,7 +76,14 @@ class _ChatRequestsScreenState extends ConsumerState<ChatRequestsScreen>
           leading: IconButton(
             tooltip: 'Back',
             icon: const Icon(Icons.arrow_back_rounded),
-            onPressed: () => AppRouter.backOrHome(context),
+            // onPressed: () => AppRouter.backOrHome(context),
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go(AppRouter.home);
+              }
+            },
           ),
           bottom: TabBar(
             controller: _tabController,
@@ -133,9 +144,11 @@ class _IncomingList extends ConsumerWidget {
                               ? NetworkImage(request.fromUserPhoto)
                               : null,
                           child: request.fromUserPhoto.isEmpty
-                              ? Text(request.fromUserName.isEmpty
-                                  ? '?'
-                                  : request.fromUserName[0].toUpperCase())
+                              ? Text(
+                                  request.fromUserName.isEmpty
+                                      ? '?'
+                                      : request.fromUserName[0].toUpperCase(),
+                                )
                               : null,
                         ),
                         const SizedBox(width: 12),
@@ -143,13 +156,18 @@ class _IncomingList extends ConsumerWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(request.fromUserName,
-                                  style:
-                                      const TextStyle(fontWeight: FontWeight.bold)),
+                              Text(
+                                request.fromUserName,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                               Text(
                                 AppFormatters.chatListTime(request.createdAt),
                                 style: const TextStyle(
-                                    fontSize: 11, color: AppColors.textHint),
+                                  fontSize: 11,
+                                  color: AppColors.textHint,
+                                ),
                               ),
                             ],
                           ),
@@ -231,13 +249,17 @@ class _OutgoingList extends ConsumerWidget {
                     ? NetworkImage(request.toUserPhoto)
                     : null,
                 child: request.toUserPhoto.isEmpty
-                    ? Text(request.toUserName.isEmpty
-                        ? '?'
-                        : request.toUserName[0].toUpperCase())
+                    ? Text(
+                        request.toUserName.isEmpty
+                            ? '?'
+                            : request.toUserName[0].toUpperCase(),
+                      )
                     : null,
               ),
               title: Text(
-                request.toUserName.isEmpty ? request.toUserId : request.toUserName,
+                request.toUserName.isEmpty
+                    ? request.toUserId
+                    : request.toUserName,
               ),
               subtitle: Text(AppFormatters.chatListTime(request.createdAt)),
               trailing: Chip(

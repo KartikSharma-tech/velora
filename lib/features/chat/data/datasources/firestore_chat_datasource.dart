@@ -50,6 +50,16 @@ class FirestoreChatDataSource {
 
     return roomId;
   }
+  // =========================================================
+  Future<bool> chatRoomExists(List<String> participants) async {
+  final ids = [...participants]..sort();
+
+  final roomId = ids.join('_');
+
+  final doc = await _chatRooms.doc(roomId).get();
+
+  return doc.exists;
+}
 
   // ==========================================================
   // Send Message

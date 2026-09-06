@@ -106,4 +106,7 @@ Future<void> markMessageSeen({
     required String messageId,
     required File file,
   });
+  Future<bool> chatRoomExists(
+  List<String> participants,
+);
 }

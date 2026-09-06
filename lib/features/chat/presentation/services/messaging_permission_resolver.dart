@@ -45,7 +45,8 @@ class MessagingPermissionResolver {
         existingRequest?.status == ChatRequestStatus.accepted;
 
     return MessagingPermissionEvaluator.evaluate(
-      targetWhoCanMessage: target.whoCanMessage,
+      
+      targetWhoCanMessage: target.discoverability,
       chatRoomAlreadyExists: roomExists,
       senderIsTargetsContact: senderIsTargetsContact,
       hasAcceptedRequest: hasAcceptedRequest,
