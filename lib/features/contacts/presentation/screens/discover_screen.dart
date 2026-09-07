@@ -11,6 +11,7 @@ import '../../../chat/presentation/services/messaging_permission_resolver.dart';
 import '../../../chat_requests/presentation/providers/chat_request_provider.dart';
 import '../../../user/data/models/user_model.dart';
 import '../../../user/presentation/providers/user_provider.dart';
+
 import '../../data/models/matched_contact_model.dart';
 import '../providers/contacts_provider.dart';
 import '../widgets/send_request_sheet.dart';

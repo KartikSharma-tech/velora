@@ -46,7 +46,8 @@ class MessagingPermissionResolver {
 
     return MessagingPermissionEvaluator.evaluate(
       
-      targetWhoCanMessage: target.discoverability,
+      // targetWhoCanMessage: target.discoverability,
+      targetWhoCanMessage: target.whoCanMessage,
       chatRoomAlreadyExists: roomExists,
       senderIsTargetsContact: senderIsTargetsContact,
       hasAcceptedRequest: hasAcceptedRequest,

@@ -8,7 +8,7 @@ abstract class UserRepository {
   Stream<UserModel?> userStream(String uid);
 
   Stream<List<UserModel>> getAllUsers();
-
+Future<List<UserModel>> searchUsersByUsername(String query);
   Future<void> updateProfile({
     required String uid,
     required String name,

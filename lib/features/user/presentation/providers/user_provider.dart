@@ -36,7 +36,17 @@ final currentUserProvider =
 /// ===========================================================
 /// All Users Stream
 /// ===========================================================
-
 final allUsersProvider = StreamProvider<List<UserModel>>((ref) {
   return ref.watch(userRepositoryProvider).getAllUsers();
+});
+
+/// ===========================================================
+/// Username Search
+/// ===========================================================
+
+final usernameSearchProvider =
+    FutureProvider.family<List<UserModel>, String>((ref, query) async {
+  return ref
+      .watch(userRepositoryProvider)
+      .searchUsersByUsername(query);
 });

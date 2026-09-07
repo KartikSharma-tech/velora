@@ -10,6 +10,8 @@ import '../../features/profile/presentation/screens/profile_screen.dart';
 import '../../features/search/presentation/screens/search_users_screen.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
 import '../../features/splash/presentation/screens/splash_screen.dart';
+import '../../features/chat_requests/presentation/screens/chat_requests_screen.dart';
+import 'package:go_router/go_router.dart';
 
 @immutable
 final class AppRouter {
@@ -26,6 +28,14 @@ final class AppRouter {
   static const String home = '/home';
   static const String searchUsers = '/search-users';
   static const String chat = '/chat';
+    static const chatRequests = '/chat-requests';
+static void backOrHome(BuildContext context) {
+  if (context.canPop()) {
+    context.pop();
+  } else {
+    context.go(AppRouter.home);
+  }
+}
   static const String profile = '/profile';
   static const String settings = '/settings';
 
@@ -90,6 +100,10 @@ final class AppRouter {
           );
         },
       ),
+      GoRoute(
+  path: AppRouter.chatRequests,
+  builder: (context, state) => const ChatRequestsScreen(),
+),
     ],
     errorBuilder: (context, state) {
       return Scaffold(

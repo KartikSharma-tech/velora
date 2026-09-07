@@ -61,6 +61,21 @@ class FirestoreUserDataSource {
         );
   }
 
+  Future<List<UserModel>> searchUsersByUsername(String query) async {
+  if (query.trim().isEmpty) return [];
+
+  final snapshot = await _users
+      .where('username', isGreaterThanOrEqualTo: query.toLowerCase())
+      .where('username',
+          isLessThanOrEqualTo: '${query.toLowerCase()}\uf8ff')
+      .limit(20)
+      .get();
+
+  return snapshot.docs
+      .map((doc) => UserModel.fromMap(doc.data()))
+      .toList();
+}
+
   // ==========================================================
   // Update Profile
   // ==========================================================

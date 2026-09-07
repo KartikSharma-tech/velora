@@ -28,6 +28,10 @@ class UserRepositoryImpl implements UserRepository {
     return _dataSource.getAllUsers();
   }
 
+@override
+Future<List<UserModel>> searchUsersByUsername(String query) {
+  return _dataSource.searchUsersByUsername(query);
+}
   @override
   Future<void> updateProfile({
     required String uid,
