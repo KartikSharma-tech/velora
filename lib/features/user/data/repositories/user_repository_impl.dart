@@ -33,20 +33,21 @@ Future<List<UserModel>> searchUsersByUsername(String query) {
   return _dataSource.searchUsersByUsername(query);
 }
   @override
-  Future<void> updateProfile({
-    required String uid,
-    required String name,
-    required String about,
-    required String photoUrl,
-  }) {
-    return _dataSource.updateProfile(
-      uid: uid,
-      name: name,
-      about: about,
-      photoUrl: photoUrl,
-    );
-  }
-
+Future<void> updateProfile({
+  required String uid,
+  required String name,
+  required String about,
+  required String photoUrl,
+  required String username,
+}) {
+  return _dataSource.updateProfile(
+    uid: uid,
+    name: name,
+    about: about,
+    photoUrl: photoUrl,
+    username: username,
+  );
+}
   @override
   Future<void> setOnlineStatus({
     required String uid,

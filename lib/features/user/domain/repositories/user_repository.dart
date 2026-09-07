@@ -14,6 +14,8 @@ Future<List<UserModel>> searchUsersByUsername(String query);
     required String name,
     required String about,
     required String photoUrl,
+      required String username,
+
   });
 
   Future<void> setOnlineStatus({

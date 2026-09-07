@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'dart:io';
 
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../user/presentation/providers/user_provider.dart';
@@ -19,6 +22,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   final _nameController = TextEditingController();
   final _aboutController = TextEditingController();
   final _photoController = TextEditingController();
+  final _usernameController = TextEditingController();
 
   bool _initialized = false;
   bool _saving = false;
@@ -28,32 +32,83 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     _nameController.dispose();
     _aboutController.dispose();
     _photoController.dispose();
+    _usernameController.dispose();
     super.dispose();
   }
+final ImagePicker _picker = ImagePicker();
 
+Future<void> _pickImage() async {
+  final file = await _picker.pickImage(
+    source: ImageSource.gallery,
+    imageQuality: 80,
+  );
+
+  if (file == null) return;
+
+  setState(() => _saving = true);
+
+  try {
+    final uid = ref.read(currentUserIdProvider);
+
+    if (uid == null) return;
+
+    final storageRef = FirebaseStorage.instance
+        .ref()
+        .child('profile_photos')
+        .child('$uid.jpg');
+
+    await storageRef.putFile(File(file.path));
+
+    final downloadUrl = await storageRef.getDownloadURL();
+    await ref.read(userRepositoryProvider).updateProfile(
+  uid: uid,
+  name: _nameController.text.trim(),
+  about: _aboutController.text.trim(),
+  photoUrl: downloadUrl,
+  username: _usernameController.text.trim(),
+);
+
+    setState(() {
+      _photoController.text = downloadUrl;
+    });
+  } catch (e) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
+    }
+  } finally {
+    if (mounted) {
+      setState(() => _saving = false);
+    }
+  }
+}
   Future<void> _save(String uid) async {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Name cannot be empty')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Name cannot be empty')));
       return;
     }
 
     setState(() => _saving = true);
 
     try {
-      await ref.read(userRepositoryProvider).updateProfile(
+      await ref
+          .read(userRepositoryProvider)
+          .updateProfile(
             uid: uid,
             name: name,
             about: _aboutController.text.trim(),
             photoUrl: _photoController.text.trim(),
+            username: _usernameController.text.trim(),
           );
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile updated')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Profile updated')));
       }
     } catch (_) {
       if (mounted) {
@@ -86,6 +141,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             _nameController.text = user.name;
             _aboutController.text = user.about;
             _photoController.text = user.photoUrl;
+            _usernameController.text = user.username ?? '';
             _initialized = true;
           }
 
@@ -94,32 +150,66 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           return ListView(
             padding: const EdgeInsets.all(20),
             children: [
+             
+             
+              const SizedBox(height: 28),
+              
               Center(
-                child: CircleAvatar(
-                  radius: 52,
-                  backgroundColor: AppColors.avatarBackground,
-                  backgroundImage:
-                      photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
-                  child: photoUrl.isEmpty
-                      ? Text(
-                          _nameController.text.isEmpty
-                              ? '?'
-                              : _nameController.text[0].toUpperCase(),
-                          style: const TextStyle(fontSize: 32),
-                        )
-                      : null,
+                child: Stack(
+                  children: [
+                    CircleAvatar(
+                      radius: 55,
+                      backgroundColor: AppColors.avatarBackground,
+                     backgroundImage: photoUrl.isEmpty
+    ? null
+    : (photoUrl.startsWith('http')
+        ? NetworkImage(photoUrl)
+        : FileImage(File(photoUrl))) as ImageProvider,
+                      child: photoUrl.isEmpty
+                          ? Text(
+                              _nameController.text.isEmpty
+                                  ? '?'
+                                  : _nameController.text[0].toUpperCase(),
+                              style: const TextStyle(fontSize: 34),
+                            )
+                          : null,
+                    ),
+
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: InkWell(
+                        onTap: _pickImage,
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: const BoxDecoration(
+                            color: Colors.blue,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.camera_alt,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                  
                 ),
+                
               ),
-              const SizedBox(height: 8),
-              Center(
-                child: Text(
-                  user?.email ?? '',
-                  style: TextStyle(
-                    color: AppColors.textHint,
-                    fontSize: 13,
-                  ),
-                ),
-              ),
+               const SizedBox(height: 10),
+
+  Center(
+    child: Text(
+      user?.email ?? '',
+      style: TextStyle(
+        color: AppColors.textHint,
+        fontSize: 13,
+      ),
+    ),
+  ),
               const SizedBox(height: 28),
               const Text('Name', style: TextStyle(fontWeight: FontWeight.w600)),
               const SizedBox(height: 6),
@@ -131,7 +221,47 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-              const Text('About', style: TextStyle(fontWeight: FontWeight.w600)),
+
+const Text(
+  'Phone Number',
+  style: TextStyle(fontWeight: FontWeight.w600),
+),
+
+const SizedBox(height: 6),
+
+TextField(
+  controller: TextEditingController(
+    text: user?.phoneNumber ?? '',
+  ),
+  readOnly: true,
+  decoration: const InputDecoration(
+    border: OutlineInputBorder(),
+    prefixIcon: Icon(Icons.phone),
+  ),
+),
+
+const SizedBox(height: 20),
+
+const Text(
+  'Username',
+  style: TextStyle(fontWeight: FontWeight.w600),
+),
+
+const SizedBox(height: 6),
+
+TextField(
+  controller: _usernameController,
+  decoration: const InputDecoration(
+    border: OutlineInputBorder(),
+    prefixText: '@',
+    hintText: 'Choose a username',
+  ),
+),
+              const SizedBox(height: 20),
+              const Text(
+                'About',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
               const SizedBox(height: 6),
               TextField(
                 controller: _aboutController,
@@ -142,17 +272,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-              const Text('Photo URL', style: TextStyle(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 6),
-              TextField(
-                controller: _photoController,
-                onChanged: (_) => setState(() {}),
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                  hintText: 'https://...',
-                ),
-              ),
-              const SizedBox(height: 28),
               SizedBox(
                 height: 50,
                 child: ElevatedButton(

@@ -81,17 +81,19 @@ class FirestoreUserDataSource {
   // ==========================================================
 
   Future<void> updateProfile({
-    required String uid,
-    required String name,
-    required String about,
-    required String photoUrl,
-  }) async {
+  required String uid,
+  required String name,
+  required String about,
+  required String photoUrl,
+  required String username,
+}) async {
     await _users.doc(uid).update({
-      'name': name,
-      'about': about,
-      'photoUrl': photoUrl,
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
+  'name': name,
+  'about': about,
+  'photoUrl': photoUrl,
+  'username': username,
+  'updatedAt': FieldValue.serverTimestamp(),
+});
   }
 
   // ==========================================================
