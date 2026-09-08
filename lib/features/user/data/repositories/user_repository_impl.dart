@@ -48,6 +48,10 @@ Future<void> updateProfile({
     username: username,
   );
 }
+@override
+Future<bool> isUsernameTaken(String username) {
+  return _dataSource.isUsernameTaken(username);
+}
   @override
   Future<void> setOnlineStatus({
     required String uid,

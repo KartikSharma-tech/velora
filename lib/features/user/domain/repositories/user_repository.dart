@@ -17,7 +17,7 @@ Future<List<UserModel>> searchUsersByUsername(String query);
       required String username,
 
   });
-
+Future<bool> isUsernameTaken(String username);
   Future<void> setOnlineStatus({
     required String uid,
     required bool isOnline,

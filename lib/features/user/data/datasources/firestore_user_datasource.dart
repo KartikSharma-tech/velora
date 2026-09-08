@@ -79,7 +79,14 @@ class FirestoreUserDataSource {
   // ==========================================================
   // Update Profile
   // ==========================================================
+Future<bool> isUsernameTaken(String username) async {
+  final snapshot = await _users
+      .where('username', isEqualTo: username)
+      .limit(1)
+      .get();
 
+  return snapshot.docs.isNotEmpty;
+}
   Future<void> updateProfile({
   required String uid,
   required String name,
@@ -87,6 +94,17 @@ class FirestoreUserDataSource {
   required String photoUrl,
   required String username,
 }) async {
+  final currentUser = await _users.doc(uid).get();
+
+final currentUsername = currentUser.data()?['username'];
+
+if (username != currentUsername) {
+  final exists = await isUsernameTaken(username);
+
+  if (exists) {
+    throw Exception('Username already taken');
+  }
+}
     await _users.doc(uid).update({
   'name': name,
   'about': about,

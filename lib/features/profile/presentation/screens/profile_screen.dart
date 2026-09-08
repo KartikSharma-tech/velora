@@ -26,7 +26,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   bool _initialized = false;
   bool _saving = false;
-
+  String? _usernameError;
+bool _checkingUsername = false;
+  
+  
+// String? _usernameError;
   @override
   void dispose() {
     _nameController.dispose();
@@ -35,56 +39,128 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     _usernameController.dispose();
     super.dispose();
   }
-final ImagePicker _picker = ImagePicker();
 
-Future<void> _pickImage() async {
-  final file = await _picker.pickImage(
-    source: ImageSource.gallery,
-    imageQuality: 80,
-  );
+  final ImagePicker _picker = ImagePicker();
 
-  if (file == null) return;
+  Future<void> _pickImage() async {
+    final file = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+    );
 
-  setState(() => _saving = true);
+    if (file == null) return;
+
+    setState(() => _saving = true);
+
+    try {
+      final uid = ref.read(currentUserIdProvider);
+
+      if (uid == null) return;
+
+      final storageRef = FirebaseStorage.instance
+          .ref()
+          .child('profile_photos')
+          .child('$uid.jpg');
+
+      await storageRef.putFile(File(file.path));
+
+      final downloadUrl = await storageRef.getDownloadURL();
+      await ref
+          .read(userRepositoryProvider)
+          .updateProfile(
+            uid: uid,
+            name: _nameController.text.trim(),
+            about: _aboutController.text.trim(),
+            photoUrl: downloadUrl,
+            username: _usernameController.text.trim(),
+          );
+
+      setState(() {
+        _photoController.text = downloadUrl;
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.toString())));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _saving = false);
+      }
+    }
+  }
+Future<void> _checkUsername(String username) async {
+  if (username.isEmpty) {
+    setState(() => _usernameError = null);
+    return;
+  }
+
+  setState(() {
+    _checkingUsername = true;
+    _usernameError = null;
+  });
 
   try {
     final uid = ref.read(currentUserIdProvider);
 
     if (uid == null) return;
 
-    final storageRef = FirebaseStorage.instance
-        .ref()
-        .child('profile_photos')
-        .child('$uid.jpg');
+    final user = await ref.read(currentUserProvider(uid).future);
 
-    await storageRef.putFile(File(file.path));
+    if (user == null) return;
 
-    final downloadUrl = await storageRef.getDownloadURL();
-    await ref.read(userRepositoryProvider).updateProfile(
-  uid: uid,
-  name: _nameController.text.trim(),
-  about: _aboutController.text.trim(),
-  photoUrl: downloadUrl,
-  username: _usernameController.text.trim(),
-);
+    if (username == user.username) {
+      setState(() {
+        _checkingUsername = false;
+        _usernameError = null;
+      });
+      return;
+    }
+
+    final taken = await ref
+        .read(userRepositoryProvider)
+        .isUsernameTaken(username);
 
     setState(() {
-      _photoController.text = downloadUrl;
+      _checkingUsername = false;
+      _usernameError =
+          taken ? 'Username already taken' : null;
     });
-  } catch (e) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString())),
-      );
-    }
-  } finally {
-    if (mounted) {
-      setState(() => _saving = false);
-    }
+  } catch (_) {
+    setState(() {
+      _checkingUsername = false;
+      _usernameError = 'Unable to check username';
+    });
   }
 }
   Future<void> _save(String uid) async {
     final name = _nameController.text.trim();
+    final username = _usernameController.text.trim();
+if (username.isEmpty) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text('Username cannot be empty'),
+    ),
+  );
+  return;
+  
+}
+
+final usernameRegex = RegExp(r'^[a-z0-9_]{4,20}$');
+
+if (!usernameRegex.hasMatch(username)) {
+  setState(() {
+    _usernameError =
+        'Username must be 4-20 characters and contain only lowercase letters, numbers, or _';
+  });
+  return;
+}
+
+setState(() {
+  _usernameError = null;
+});
+
     if (name.isEmpty) {
       ScaffoldMessenger.of(
         context,
@@ -110,13 +186,15 @@ Future<void> _pickImage() async {
           context,
         ).showSnackBar(const SnackBar(content: Text('Profile updated')));
       }
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Unable to update profile')),
-        );
-      }
-    } finally {
+    } catch (e) {
+  if (mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(e.toString().replaceFirst('Exception: ', '')),
+      ),
+    );
+  }
+} finally {
       if (mounted) setState(() => _saving = false);
     }
   }
@@ -150,21 +228,20 @@ Future<void> _pickImage() async {
           return ListView(
             padding: const EdgeInsets.all(20),
             children: [
-             
-             
               const SizedBox(height: 28),
-              
+
               Center(
                 child: Stack(
                   children: [
                     CircleAvatar(
                       radius: 55,
                       backgroundColor: AppColors.avatarBackground,
-                     backgroundImage: photoUrl.isEmpty
-    ? null
-    : (photoUrl.startsWith('http')
-        ? NetworkImage(photoUrl)
-        : FileImage(File(photoUrl))) as ImageProvider,
+                      backgroundImage: photoUrl.isEmpty
+                          ? null
+                          : (photoUrl.startsWith('http')
+                                    ? NetworkImage(photoUrl)
+                                    : FileImage(File(photoUrl)))
+                                as ImageProvider,
                       child: photoUrl.isEmpty
                           ? Text(
                               _nameController.text.isEmpty
@@ -195,21 +272,16 @@ Future<void> _pickImage() async {
                       ),
                     ),
                   ],
-                  
                 ),
-                
               ),
-               const SizedBox(height: 10),
+              const SizedBox(height: 10),
 
-  Center(
-    child: Text(
-      user?.email ?? '',
-      style: TextStyle(
-        color: AppColors.textHint,
-        fontSize: 13,
-      ),
-    ),
-  ),
+              Center(
+                child: Text(
+                  user?.email ?? '',
+                  style: TextStyle(color: AppColors.textHint, fontSize: 13),
+                ),
+              ),
               const SizedBox(height: 28),
               const Text('Name', style: TextStyle(fontWeight: FontWeight.w600)),
               const SizedBox(height: 6),
@@ -222,41 +294,56 @@ Future<void> _pickImage() async {
               ),
               const SizedBox(height: 20),
 
-const Text(
-  'Phone Number',
-  style: TextStyle(fontWeight: FontWeight.w600),
+              const Text(
+                'Phone Number',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+
+              const SizedBox(height: 6),
+
+              TextField(
+                controller: TextEditingController(
+                  text: user?.phoneNumber ?? '',
+                ),
+                readOnly: true,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.phone),
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              const Text(
+                'Username',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+
+              const SizedBox(height: 6),
+
+              TextField(
+                controller: _usernameController,
+
+                onChanged: (value) {
+                  final normalized = value.toLowerCase().replaceAll(' ', '_');
+
+                  if (normalized != value) {
+                    _usernameController.value = TextEditingValue(
+                      text: normalized,
+                      selection: TextSelection.collapsed(
+                        offset: normalized.length,
+                      ),
+                    );
+                  }
+                },
+
+               decoration: InputDecoration(
+  border: const OutlineInputBorder(),
+  prefixText: '@',
+  hintText: 'Choose a username',
+  errorText: _usernameError,
 ),
-
-const SizedBox(height: 6),
-
-TextField(
-  controller: TextEditingController(
-    text: user?.phoneNumber ?? '',
-  ),
-  readOnly: true,
-  decoration: const InputDecoration(
-    border: OutlineInputBorder(),
-    prefixIcon: Icon(Icons.phone),
-  ),
-),
-
-const SizedBox(height: 20),
-
-const Text(
-  'Username',
-  style: TextStyle(fontWeight: FontWeight.w600),
-),
-
-const SizedBox(height: 6),
-
-TextField(
-  controller: _usernameController,
-  decoration: const InputDecoration(
-    border: OutlineInputBorder(),
-    prefixText: '@',
-    hintText: 'Choose a username',
-  ),
-),
+              ),
               const SizedBox(height: 20),
               const Text(
                 'About',

@@ -11,7 +11,6 @@ import '../../features/search/presentation/screens/search_users_screen.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
 import '../../features/splash/presentation/screens/splash_screen.dart';
 import '../../features/chat_requests/presentation/screens/chat_requests_screen.dart';
-import 'package:go_router/go_router.dart';
 
 @immutable
 final class AppRouter {
