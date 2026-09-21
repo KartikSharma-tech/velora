@@ -4,23 +4,10 @@ import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
 
-/// Default [FirebaseOptions] for use with your Firebase apps.
-///
-/// Example:
-/// ```dart
-/// import 'firebase_options.dart';
-/// // ...
-/// await Firebase.initializeApp(
-///   options: DefaultFirebaseOptions.currentPlatform,
-/// );
-/// ```
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
-      throw UnsupportedError(
-        'DefaultFirebaseOptions have not been configured for web - '
-        'you can reconfigure this by running the FlutterFire CLI again.',
-      );
+      return web;
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
@@ -46,6 +33,16 @@ class DefaultFirebaseOptions {
     }
   }
 
+  static const FirebaseOptions web = FirebaseOptions(
+    apiKey: 'AIzaSyBfuZoClr8RgagBY_pO-QiF3Un_At13xiY',
+    appId: '1:180424116104:web:0eeb01a7e188719f0a5c3d',
+    messagingSenderId: '180424116104',
+    projectId: 'velora-f0bb0',
+    authDomain: 'velora-f0bb0.firebaseapp.com',
+    storageBucket: 'velora-f0bb0.firebasestorage.app',
+    measurementId: 'G-JTSCK1EJ1E',
+  );
+
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyDYGwXk0pSuOuUY82L9Yvu6PuSBR2UHP8U',
     appId: '1:180424116104:android:24dd932f40df24870a5c3d',
@@ -53,6 +50,7 @@ class DefaultFirebaseOptions {
     projectId: 'velora-f0bb0',
     storageBucket: 'velora-f0bb0.firebasestorage.app',
   );
+
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyBLAGuRmjxqsd1MMRMxZOoSwPGq0L0yLyI',
     appId: '1:180424116104:ios:83f8184115172ced0a5c3d',
@@ -61,6 +59,7 @@ class DefaultFirebaseOptions {
     storageBucket: 'velora-f0bb0.firebasestorage.app',
     iosBundleId: 'com.example.velora',
   );
+
   static const FirebaseOptions macos = FirebaseOptions(
     apiKey: 'AIzaSyBLAGuRmjxqsd1MMRMxZOoSwPGq0L0yLyI',
     appId: '1:180424116104:ios:83f8184115172ced0a5c3d',
