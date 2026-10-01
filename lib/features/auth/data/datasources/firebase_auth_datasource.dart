@@ -93,6 +93,8 @@ class FirebaseAuthDataSource {
     }
   }
 
+
+
   Future<void> reloadUser() async {
     await _firebaseAuth.currentUser?.reload();
   }

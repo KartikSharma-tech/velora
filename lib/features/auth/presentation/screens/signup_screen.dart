@@ -8,6 +8,7 @@ import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/app_radius.dart';
 import '../../../../app/theme/app_spacing.dart';
 import '../../../../app/theme/app_typography.dart';
+import '../../../../core/utils/phone_normalizer.dart';
 import '../../../../core/utils/validators.dart';
 import '../providers/auth_provider.dart';
 
@@ -25,6 +26,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final _phoneController = TextEditingController();
 
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
@@ -36,6 +38,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _phoneController.dispose();
     super.dispose();
   }
 
@@ -43,26 +46,27 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     FocusScope.of(context).unfocus();
-
-    setState(() {
-      _loading = true;
-    });
+    setState(() => _loading = true);
 
     try {
-      await ref
-          .read(authRepositoryProvider)
-          .signUp(
+      // Normalize phone number
+      final rawPhone = _phoneController.text.trim();
+      final normalizedPhone = PhoneNormalizer.normalize(rawPhone) ?? rawPhone;
+
+      await ref.read(authRepositoryProvider).signUp(
             name: _nameController.text.trim(),
             email: _emailController.text.trim(),
             password: _passwordController.text,
+            phone: normalizedPhone,
           );
+// await ref.read(authRepositoryProvider).pfirebase_auth_datasource();
 
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Account created successfully. Please verify your email before logging in.',
+            'Account created! Please verify your email before logging in.',
           ),
         ),
       );
@@ -72,44 +76,34 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       if (!mounted) return;
 
       String message;
-
       switch (e.code) {
         case 'email-already-in-use':
           message = 'An account already exists with this email.';
           break;
-
         case 'invalid-email':
           message = 'Please enter a valid email address.';
           break;
-
         case 'weak-password':
           message = 'Password is too weak.';
           break;
-
         case 'operation-not-allowed':
           message = 'Email/password authentication is disabled.';
           break;
-
         default:
           message = e.message ?? 'Signup failed.';
       }
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(message)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(message)));
     } catch (_) {
       if (!mounted) return;
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Something went wrong.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Something went wrong.')),
+      );
     }
 
     if (!mounted) return;
-
-    setState(() {
-      _loading = false;
-    });
+    setState(() => _loading = false);
   }
 
   @override
@@ -142,6 +136,8 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                 ),
 
                 AppSpacing.gapXXL,
+
+                // Full Name
                 TextFormField(
                   controller: _nameController,
                   validator: Validators.name,
@@ -155,6 +151,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
                 AppSpacing.gapLG,
 
+                // Email
                 TextFormField(
                   controller: _emailController,
                   validator: Validators.email,
@@ -169,6 +166,32 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
                 AppSpacing.gapLG,
 
+                // Phone Number
+                TextFormField(
+                  controller: _phoneController,
+                  keyboardType: TextInputType.phone,
+                  textInputAction: TextInputAction.next,
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Phone number is required';
+                    }
+                    final normalized = PhoneNormalizer.normalize(value.trim());
+                    if (normalized == null) {
+                      return 'Enter a valid 10-digit Indian number';
+                    }
+                    return null;
+                  },
+                  decoration: const InputDecoration(
+                    labelText: "Phone Number",
+                    prefixIcon: Icon(Icons.phone_outlined),
+                    hintText: '98765 43210',
+                    border: OutlineInputBorder(borderRadius: AppRadius.lg),
+                  ),
+                ),
+
+                AppSpacing.gapLG,
+
+                // Password
                 TextFormField(
                   controller: _passwordController,
                   validator: Validators.password,
@@ -181,11 +204,8 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                       borderRadius: AppRadius.lg,
                     ),
                     suffixIcon: IconButton(
-                      onPressed: () {
-                        setState(() {
-                          _obscurePassword = !_obscurePassword;
-                        });
-                      },
+                      onPressed: () =>
+                          setState(() => _obscurePassword = !_obscurePassword),
                       icon: Icon(
                         _obscurePassword
                             ? Icons.visibility_off_outlined
@@ -197,6 +217,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
                 AppSpacing.gapLG,
 
+                // Confirm Password
                 TextFormField(
                   controller: _confirmPasswordController,
                   obscureText: _obscureConfirmPassword,
@@ -213,11 +234,8 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                       borderRadius: AppRadius.lg,
                     ),
                     suffixIcon: IconButton(
-                      onPressed: () {
-                        setState(() {
-                          _obscureConfirmPassword = !_obscureConfirmPassword;
-                        });
-                      },
+                      onPressed: () => setState(() =>
+                          _obscureConfirmPassword = !_obscureConfirmPassword),
                       icon: Icon(
                         _obscureConfirmPassword
                             ? Icons.visibility_off_outlined
@@ -259,9 +277,8 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                       ),
                     ),
                     TextButton(
-                      onPressed: _loading
-                          ? null
-                          : () => context.go(AppRouter.login),
+                      onPressed:
+                          _loading ? null : () => context.go(AppRouter.login),
                       child: const Text("Login"),
                     ),
                   ],

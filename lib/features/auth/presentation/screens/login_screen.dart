@@ -51,6 +51,36 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
       if (!mounted) return;
 
+      // Email verification check
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null && !user.emailVerified) {
+        // Logout kar do — verified nahi hai
+        await FirebaseAuth.instance.signOut();
+
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'Please verify your email before logging in. Check your inbox.',
+            ),
+            action: SnackBarAction(
+              label: 'Resend',
+              onPressed: () async {
+                await user.sendEmailVerification();
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Verification email sent!')),
+                );
+              },
+            ),
+          ),
+        );
+
+        setState(() => _loading = false);
+        return;
+      }
+
       context.go(AppRouter.home);
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;

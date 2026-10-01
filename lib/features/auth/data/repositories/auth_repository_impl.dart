@@ -29,43 +29,39 @@ class AuthRepositoryImpl implements AuthRepository {
       password: password,
     );
   }
+@override
+Future<void> signUp({
+  required String name,
+  required String email,
+  required String password,
+  required String phone,
+}) async {
+  await _remoteDataSource.signUp(
+    email: email,
+    password: password,
+  );
 
-  @override
-  Future<void> signUp({
-    required String name,
-    required String email,
-    required String password,
-  }) async {
-    await _remoteDataSource.signUp(
-      email: email,
-      password: password,
-    );
+  await _remoteDataSource.updateDisplayName(name);
 
-    await _remoteDataSource.updateDisplayName(name);
+  final uid = _remoteDataSource.currentUserId;
+  if (uid == null) throw Exception('User not found after signup.');
 
-    final uid = _remoteDataSource.currentUserId;
+  final user = UserModel(
+    uid: uid,
+    name: name,
+    email: email,
+    photoUrl: '',
+    about: "Hey there! I'm using Velora.",
+    isOnline: true,
+    lastSeen: DateTime.now(),
+    createdAt: DateTime.now(),
+    updatedAt: DateTime.now(),
+    phoneNumber: phone, // ✅ phone save 
+  );
 
-    if (uid == null) {
-      throw Exception('User not found after signup.');
-    }
-
-    final user = UserModel(
-      uid: uid,
-      name: name,
-      email: email,
-      photoUrl: '',
-      about: "Hey there! I'm using Velora.",
-      isOnline: true,
-      lastSeen: DateTime.now(),
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-    );
-
-    await _userRepository.createUser(user);
-
-    await _remoteDataSource.sendEmailVerification();
-  }
-
+  await _userRepository.createUser(user);
+  await _remoteDataSource.sendEmailVerification();
+}
   @override
   Future<void> sendPasswordResetEmail({
     required String email,
@@ -74,7 +70,15 @@ class AuthRepositoryImpl implements AuthRepository {
       email: email,
     );
   }
+@override
+Future<void> sendEmailVerification() {
+  return _remoteDataSource.sendEmailVerification();
+}
 
+@override
+Future<void> reloadUser() {
+  return _remoteDataSource.reloadUser();
+}
   @override
   Future<void> signOut() async {
     await _remoteDataSource.signOut();

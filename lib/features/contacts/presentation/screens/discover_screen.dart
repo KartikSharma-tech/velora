@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-
+import 'package:share_plus/share_plus.dart';
 import '../../../../app/router/app_router.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
@@ -34,8 +34,9 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
   }
 
   Future<void> _requestPermission() async {
-    final granted =
-        await ref.read(contactRepositoryProvider).requestPermission();
+    final granted = await ref
+        .read(contactRepositoryProvider)
+        .requestPermission();
 
     if (granted) {
       ref.invalidate(contactSyncProvider(true));
@@ -68,9 +69,9 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
 
     switch (permission) {
       case MessagingPermission.allowed:
-        final roomId = await ref.read(chatRepositoryProvider).createChatRoom(
-          participants: [currentUserId, target.uid],
-        );
+        final roomId = await ref
+            .read(chatRepositoryProvider)
+            .createChatRoom(participants: [currentUserId, target.uid]);
         if (!mounted) return;
         context.push(
           AppRouter.chat,
@@ -116,13 +117,13 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
   //   await _openUser(user);
   // }
   Future<void> _openVeloraContact(VeloraContact contact) async {
-  if (contact.uid == null) return;
+    if (contact.uid == null) return;
 
-  final user = ref.read(currentUserProvider(contact.uid!)).value;
-  if (user == null || !mounted) return;
+    final user = ref.read(currentUserProvider(contact.uid!)).value;
+    if (user == null || !mounted) return;
 
-  await _openUser(user);
-}
+    await _openUser(user);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -132,8 +133,9 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    final incomingRequestsAsync =
-        ref.watch(incomingChatRequestsProvider(currentUserId));
+    final incomingRequestsAsync = ref.watch(
+      incomingChatRequestsProvider(currentUserId),
+    );
     final incomingCount = incomingRequestsAsync.maybeWhen(
       data: (requests) => requests.length,
       orElse: () => 0,
@@ -210,8 +212,7 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
                             )
                           : null,
                     ),
-                    onChanged: (value) =>
-                        setState(() => _query = value.trim()),
+                    onChanged: (value) => setState(() => _query = value.trim()),
                   ),
                 ),
                 Expanded(
@@ -266,9 +267,7 @@ class _UsernameResults extends ConsumerWidget {
                     ? NetworkImage(user.photoUrl)
                     : null,
                 child: user.photoUrl.isEmpty
-                    ? Text(
-                        user.name.isEmpty ? '?' : user.name[0].toUpperCase(),
-                      )
+                    ? Text(user.name.isEmpty ? '?' : user.name[0].toUpperCase())
                     : null,
               ),
               title: Text(user.name),
@@ -285,10 +284,7 @@ class _UsernameResults extends ConsumerWidget {
 
 // ── Contacts List ────────────────────────────────────────────────────
 class _ContactsList extends ConsumerWidget {
-  const _ContactsList({
-    required this.onRequestPermission,
-    required this.onTap,
-  });
+  const _ContactsList({required this.onRequestPermission, required this.onTap});
 
   final VoidCallback onRequestPermission;
   final ValueChanged<VeloraContact> onTap;
@@ -375,39 +371,36 @@ class _ContactsList extends ConsumerWidget {
                       ),
                     ),
                     SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) {
-                          final contact = onVelora[index];
-                          return ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor: AppColors.avatarBackground,
-                              backgroundImage:
-                                  contact.photoUrl?.isNotEmpty == true
-                                      ? NetworkImage(contact.photoUrl!)
-                                      : null,
-                              child: contact.photoUrl?.isNotEmpty != true
-                                  ? Text(
-                                      contact.displayName.isEmpty
-                                          ? '?'
-                                          : contact.displayName[0]
-                                              .toUpperCase(),
-                                    )
-                                  : null,
-                            ),
-                            title: Text(contact.displayName),
-                            subtitle: Text(
-                              contact.veloraName != null &&
-                                      contact.veloraName != contact.displayName
-                                  ? 'Velora: ${contact.veloraName}'
-                                  : 'On Velora',
-                            ),
-                            trailing:
-                                const Icon(Icons.chat_bubble_outline_rounded),
-                            onTap: () => onTap(contact),
-                          );
-                        },
-                        childCount: onVelora.length,
-                      ),
+                      delegate: SliverChildBuilderDelegate((context, index) {
+                        final contact = onVelora[index];
+                        return ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: AppColors.avatarBackground,
+                            backgroundImage:
+                                contact.photoUrl?.isNotEmpty == true
+                                ? NetworkImage(contact.photoUrl!)
+                                : null,
+                            child: contact.photoUrl?.isNotEmpty != true
+                                ? Text(
+                                    contact.displayName.isEmpty
+                                        ? '?'
+                                        : contact.displayName[0].toUpperCase(),
+                                  )
+                                : null,
+                          ),
+                          title: Text(contact.displayName),
+                          subtitle: Text(
+                            contact.veloraName != null &&
+                                    contact.veloraName != contact.displayName
+                                ? 'Velora: ${contact.veloraName}'
+                                : 'On Velora',
+                          ),
+                          trailing: const Icon(
+                            Icons.chat_bubble_outline_rounded,
+                          ),
+                          onTap: () => onTap(contact),
+                        );
+                      }, childCount: onVelora.length),
                     ),
                   ],
 
@@ -428,30 +421,33 @@ class _ContactsList extends ConsumerWidget {
                       ),
                     ),
                     SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) {
-                          final contact = notOnVelora[index];
-                          return ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor: AppColors.avatarBackground,
-                              child: Text(
-                                contact.displayName.isEmpty
-                                    ? '?'
-                                    : contact.displayName[0].toUpperCase(),
-                              ),
+                      delegate: SliverChildBuilderDelegate((context, index) {
+                        final contact = notOnVelora[index];
+                        return ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: AppColors.avatarBackground,
+                            child: Text(
+                              contact.displayName.isEmpty
+                                  ? '?'
+                                  : contact.displayName[0].toUpperCase(),
                             ),
-                            title: Text(contact.displayName),
-                            subtitle: Text(contact.phone),
-                            trailing: TextButton(
-                              onPressed: () {
-                                // TODO: native share
-                              },
-                              child: const Text('Invite'),
-                            ),
-                          );
-                        },
-                        childCount: notOnVelora.length,
-                      ),
+                          ),
+                          title: Text(contact.displayName),
+                          subtitle: Text(contact.phone),
+                          trailing: TextButton(
+                            onPressed: () async {
+                              await SharePlus.instance.share(
+                                ShareParams(
+                                  text:
+                                      'Hey! Join me on Velora — a fast, private chat app.\n\nDownload it here:\nhttps://play.google.com/store/apps/details?id=com.velora.app',
+                                  subject: 'Join me on Velora!',
+                                ),
+                              );
+                            },
+                            child: const Text('Invite'),
+                          ),
+                        );
+                      }, childCount: notOnVelora.length),
                     ),
                   ],
                 ],
