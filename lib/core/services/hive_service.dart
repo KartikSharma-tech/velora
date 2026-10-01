@@ -1,7 +1,8 @@
 import 'package:hive_flutter/hive_flutter.dart';
 
 import '../storage/hive_boxes.dart';
-import '../features/contacts/data/models/cached_contact_model.dart';
+import '../../features/contacts/data/models/cached_contact_model.dart';
+
 /// ===========================================================
 /// Velora
 /// Hive Service
@@ -20,15 +21,16 @@ class HiveService {
   Box? _settingsBox;
 
   Future<void> init() async {
-  _settingsBox = await Hive.openBox(HiveBoxes.settings);
+    _settingsBox = await Hive.openBox(HiveBoxes.settings);
 
-  // Contacts cache
-  if (!Hive.isAdapterRegistered(3)) {
-    Hive.registerAdapter(CachedContactModelAdapter());
+    // Contacts cache
+    if (!Hive.isAdapterRegistered(3)) {
+      Hive.registerAdapter(CachedContactModelAdapter());
+    }
+    await Hive.openBox<CachedContactModel>(HiveBoxes.contactsCache);
+    await Hive.openBox<dynamic>(HiveBoxes.contactsMeta);
   }
-  await Hive.openBox<CachedContactModel>(HiveBoxes.contactsCache);
-  await Hive.openBox<dynamic>(HiveBoxes.contactsMeta);
-}
+
   Box get _box {
     final box = _settingsBox;
     if (box == null) {

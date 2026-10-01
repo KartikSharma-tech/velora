@@ -33,6 +33,8 @@
 		<key>UIApplicationSupportsMultipleScenes</key>
 		<false/>
 		<key>UISceneConfigurations</key>
+		<key>NSContactsUsageDescription</key>
+<string>Velora uses your contacts to show people you already know who are on the app.</string>
 		<dict>
 			<key>UIWindowSceneSessionRoleApplication</key>
 			<array>

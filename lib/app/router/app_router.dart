@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-
+import '../../features/contacts/presentation/screens/discover_screen.dart';
 import '../../features/auth/presentation/screens/forgot_password_screen.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/signup_screen.dart';
@@ -74,7 +74,7 @@ static void backOrHome(BuildContext context) {
       GoRoute(
         path: searchUsers,
         name: 'search-users',
-        builder: (context, state) => const SearchUsersScreen(),
+        builder: (context, state) => const DiscoverScreen(),
       ),
       GoRoute(
         path: profile,

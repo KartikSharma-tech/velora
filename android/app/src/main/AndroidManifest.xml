@@ -1,4 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<!-- Contacts permission for reading contacts From Device start -->
+<uses-permission android:name="android.permission.READ_CONTACTS" />
+<!-- Contacts permission for reading contacts From Device end-->
+
     <application
         android:label="velora"
         android:name="${applicationName}"
