@@ -1,49 +1,50 @@
 import 'package:flutter_contacts/flutter_contacts.dart';
 
-import '../../../../core/utils/phone_utils.dart';
+import '../../../../core/utils/phone_normalizer.dart';
+import '../../domain/entities/device_contact.dart';
 
-/// Thin wrapper around `flutter_contacts` — the only place in the
-/// app that touches the device address book.
 class DeviceContactsDataSource {
-  /// Whether we currently hold the Contacts permission, without
-  /// prompting.
-  Future<bool> hasPermission() {
-    return FlutterContacts.requestPermission(readonly: true).then(
-      (_) => true,
-      onError: (_) => false,
-    );
+  /// Permission check — without prompting
+  Future<bool> hasPermission() async {
+    try {
+      return await FlutterContacts.requestPermission(readonly: true);
+    } catch (_) {
+      return false;
+    }
   }
 
-  /// Prompts the OS contacts-permission dialog if needed. Returns
-  /// whether permission is now granted.
+  /// Permission prompt
   Future<bool> requestPermission() {
     return FlutterContacts.requestPermission(readonly: true);
   }
 
-  /// Reads every phone number from the device address book and
-  /// returns a `normalizedPhone -> contactDisplayName` map. A
-  /// single contact can contribute multiple numbers; a single
-  /// normalized number keeps whichever display name was seen last
-  /// (good enough — collisions here are rare and cosmetic only).
-  Future<Map<String, String>> readContactPhoneNumbers() async {
+  /// Device contacts read karo — normalized E.164 numbers ke saath
+  Future<List<DeviceContact>> getContacts() async {
     final contacts = await FlutterContacts.getContacts(
       withProperties: true,
+      withPhoto: false,
     );
 
-    final Map<String, String> phoneToName = {};
+    final result = <DeviceContact>[];
 
     for (final contact in contacts) {
-      final displayName =
-          contact.displayName.trim().isEmpty ? 'Unknown' : contact.displayName;
+      final displayName = contact.displayName.trim().isEmpty
+          ? 'Unknown'
+          : contact.displayName.trim();
 
-      for (final phone in contact.phones) {
-        final normalized = PhoneUtils.matchKey(phone.number);
-        if (normalized.length == 10) {
-          phoneToName[normalized] = displayName;
-        }
-      }
+      final rawNumbers = contact.phones.map((p) => p.number).toList();
+
+      final normalizedPhones = PhoneNormalizer.normalizeAll(rawNumbers);
+
+      // Koi valid number nahi — skip
+      if (normalizedPhones.isEmpty) continue;
+
+      result.add(DeviceContact(
+        displayName: displayName,
+        normalizedPhones: normalizedPhones,
+      ));
     }
 
-    return phoneToName;
+    return result;
   }
 }

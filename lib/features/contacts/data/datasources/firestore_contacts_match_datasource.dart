@@ -1,51 +1,56 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import '../../../user/data/models/user_model.dart';
+import '../../domain/entities/velora_contact.dart';
 
-/// Matches normalized phone numbers (from the device address book)
-/// against registered `users` in Firestore.
 class FirestoreContactsMatchDataSource {
   FirestoreContactsMatchDataSource({FirebaseFirestore? firestore})
       : _firestore = firestore ?? FirebaseFirestore.instance;
 
   final FirebaseFirestore _firestore;
 
-  static const int _batchSize = 10;
+  // Firestore whereIn max 30 hai — 25 safe rakho
+  static const int _batchSize = 25;
 
   CollectionReference<Map<String, dynamic>> get _users =>
       _firestore.collection('users');
 
-  /// Looks up which of [normalizedPhoneNumbers] belong to a
-  /// registered, phone-discoverable user. Firestore's `whereIn`
-  /// caps at 30 values (we use 10 per query to stay safely under
-  /// that on every SDK version), so a large contact list is looked
-  /// up in batches and merged.
-  Future<List<UserModel>> findRegisteredUsers(
-    List<String> normalizedPhoneNumbers, {
-    required String excludeUid,
-  }) async {
-    if (normalizedPhoneNumbers.isEmpty) return [];
+  /// Batch query — normalized phones ko Firestore users se match karo
+  /// Returns: Map<normalizedPhone, VeloraContact>
+  Future<Map<String, VeloraContact>> fetchVeloraUsers(
+    List<String> normalizedPhones,
+  ) async {
+    if (normalizedPhones.isEmpty) return {};
 
-    final uniqueNumbers = normalizedPhoneNumbers.toSet().toList();
-    final results = <UserModel>[];
+    final unique = normalizedPhones.toSet().toList();
+    final result = <String, VeloraContact>{};
 
-    for (var i = 0; i < uniqueNumbers.length; i += _batchSize) {
-      final batch = uniqueNumbers.sublist(
+    for (var i = 0; i < unique.length; i += _batchSize) {
+      final batch = unique.sublist(
         i,
-        (i + _batchSize > uniqueNumbers.length)
-            ? uniqueNumbers.length
-            : i + _batchSize,
+        (i + _batchSize > unique.length) ? unique.length : i + _batchSize,
       );
 
-      final snapshot =
-          await _users.where('phoneNumber', whereIn: batch).get();
+      final snapshot = await _users
+          .where('phoneNumber', whereIn: batch)
+          .get();
 
       for (final doc in snapshot.docs) {
-        if (doc.id == excludeUid) continue;
-        results.add(UserModel.fromMap(doc.data()));
+        final data = doc.data();
+        final phone = data['phoneNumber'] as String?;
+        if (phone == null) continue;
+
+        result[phone] = VeloraContact(
+          displayName: data['name'] as String? ?? 'Velora User',
+          phone: phone,
+          isOnVelora: true,
+          uid: doc.id,
+          veloraName: data['name'] as String?,
+          photoUrl: data['photoUrl'] as String?,
+          username: data['username'] as String?,
+        );
       }
     }
 
-    return results;
+    return result;
   }
 }

@@ -32,11 +32,11 @@ class MessagingPermissionResolver {
     // whatever this session already fetched via the Discover
     // screen; if it hasn't loaded yet, this awaits the same
     // future rather than re-reading the device address book.
-    final matchedContacts =
-        await ref.read(matchedContactsProvider(currentUserId).future);
-    final senderIsTargetsContact =
-        matchedContacts.any((c) => c.user.uid == target.uid);
-
+   // Naya — replace karo
+final syncResult =
+    await ref.read(contactSyncProvider(false).future);
+final senderIsTargetsContact =
+    syncResult.onVelora.any((c) => c.uid == target.uid);
     final existingRequest = await requestRepo.getRequestBetween(
       fromUserId: currentUserId,
       toUserId: target.uid,

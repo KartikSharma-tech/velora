@@ -11,15 +11,10 @@ import '../../../chat/presentation/services/messaging_permission_resolver.dart';
 import '../../../chat_requests/presentation/providers/chat_request_provider.dart';
 import '../../../user/data/models/user_model.dart';
 import '../../../user/presentation/providers/user_provider.dart';
-
-import '../../data/models/matched_contact_model.dart';
+import '../../domain/entities/velora_contact.dart';
 import '../providers/contacts_provider.dart';
 import '../widgets/send_request_sheet.dart';
 
-/// Replaces the old "show every registered user" search screen.
-/// Default view is contacts the user already knows (matched via
-/// their phone's address book); a search bar lets them find anyone
-/// else by username, subject to that person's privacy settings.
 class DiscoverScreen extends ConsumerStatefulWidget {
   const DiscoverScreen({super.key});
 
@@ -38,12 +33,12 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
     super.dispose();
   }
 
-  Future<void> _requestPermission(String userId) async {
+  Future<void> _requestPermission() async {
     final granted =
-        await ref.read(contactsRepositoryProvider).requestContactsPermission();
+        await ref.read(contactRepositoryProvider).requestPermission();
 
     if (granted) {
-      ref.invalidate(matchedContactsProvider(userId));
+      ref.invalidate(contactSyncProvider(true));
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -102,12 +97,32 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
       case MessagingPermission.blocked:
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("${target.name} isn't accepting new messages right now."),
+            content: Text(
+              "${target.name} isn't accepting new messages right now.",
+            ),
           ),
         );
         break;
     }
   }
+
+  // Future<void> _openVeloraContact(VeloraContact contact) async {
+  //   if (contact.uid == null) return;
+
+  //   final userAsync = ref.read(currentUserProvider(contact.uid!));
+  //   final user = await userAsync.future;
+  //   if (user == null || !mounted) return;
+
+  //   await _openUser(user);
+  // }
+  Future<void> _openVeloraContact(VeloraContact contact) async {
+  if (contact.uid == null) return;
+
+  final user = ref.read(currentUserProvider(contact.uid!)).value;
+  if (user == null || !mounted) return;
+
+  await _openUser(user);
+}
 
   @override
   Widget build(BuildContext context) {
@@ -126,7 +141,7 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
 
     return PopScope(
       canPop: context.canPop(),
-      onPopInvoked: (didPop) {
+      onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
         context.go(AppRouter.home);
       },
@@ -152,7 +167,10 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
                     top: 8,
                     right: 8,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 5,
+                        vertical: 1,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.error,
                         borderRadius: BorderRadius.circular(100),
@@ -192,16 +210,16 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
                             )
                           : null,
                     ),
-                    onChanged: (value) => setState(() => _query = value.trim()),
+                    onChanged: (value) =>
+                        setState(() => _query = value.trim()),
                   ),
                 ),
                 Expanded(
                   child: _query.isNotEmpty
                       ? _UsernameResults(query: _query, onTap: _openUser)
                       : _ContactsList(
-                          userId: currentUserId,
-                          onRequestPermission: () => _requestPermission(currentUserId),
-                          onTap: _openUser,
+                          onRequestPermission: _requestPermission,
+                          onTap: _openVeloraContact,
                         ),
                 ),
               ],
@@ -218,6 +236,7 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
   }
 }
 
+// ── Username Search ──────────────────────────────────────────────────
 class _UsernameResults extends ConsumerWidget {
   const _UsernameResults({required this.query, required this.onTap});
 
@@ -243,10 +262,13 @@ class _UsernameResults extends ConsumerWidget {
             return ListTile(
               leading: CircleAvatar(
                 backgroundColor: AppColors.avatarBackground,
-                backgroundImage:
-                    user.photoUrl.isNotEmpty ? NetworkImage(user.photoUrl) : null,
+                backgroundImage: user.photoUrl.isNotEmpty
+                    ? NetworkImage(user.photoUrl)
+                    : null,
                 child: user.photoUrl.isEmpty
-                    ? Text(user.name.isEmpty ? '?' : user.name[0].toUpperCase())
+                    ? Text(
+                        user.name.isEmpty ? '?' : user.name[0].toUpperCase(),
+                      )
                     : null,
               ),
               title: Text(user.name),
@@ -261,16 +283,15 @@ class _UsernameResults extends ConsumerWidget {
   }
 }
 
+// ── Contacts List ────────────────────────────────────────────────────
 class _ContactsList extends ConsumerWidget {
   const _ContactsList({
-    required this.userId,
     required this.onRequestPermission,
     required this.onTap,
   });
 
-  final String userId;
   final VoidCallback onRequestPermission;
-  final ValueChanged<UserModel> onTap;
+  final ValueChanged<VeloraContact> onTap;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -289,9 +310,9 @@ class _ContactsList extends ConsumerWidget {
           return _PermissionBanner(onRequestPermission: onRequestPermission);
         }
 
-        final matchesAsync = ref.watch(matchedContactsProvider(userId));
+        final syncAsync = ref.watch(contactSyncProvider(false));
 
-        return matchesAsync.when(
+        return syncAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (error, _) => Center(
             child: Padding(
@@ -299,16 +320,22 @@ class _ContactsList extends ConsumerWidget {
               child: Text(error.toString(), textAlign: TextAlign.center),
             ),
           ),
-          data: (matches) {
-            if (matches.isEmpty) {
+          data: (result) {
+            final onVelora = result.onVelora;
+            final notOnVelora = result.notOnVelora;
+
+            if (onVelora.isEmpty && notOnVelora.isEmpty) {
               return Center(
                 child: Padding(
                   padding: const EdgeInsets.all(24),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.contacts_outlined,
-                          size: 56, color: AppColors.textHint),
+                      Icon(
+                        Icons.contacts_outlined,
+                        size: 56,
+                        color: AppColors.textHint,
+                      ),
                       const SizedBox(height: 12),
                       const Text(
                         "None of your contacts are on Velora yet",
@@ -328,33 +355,106 @@ class _ContactsList extends ConsumerWidget {
             }
 
             return RefreshIndicator(
-              onRefresh: () async => ref.invalidate(matchedContactsProvider(userId)),
-              child: ListView.builder(
-                itemCount: matches.length,
-                itemBuilder: (context, index) {
-                  final MatchedContact match = matches[index];
-                  final user = match.user;
+              onRefresh: () async => ref.invalidate(contactSyncProvider(true)),
+              child: CustomScrollView(
+                slivers: [
+                  // On Velora section
+                  if (onVelora.isNotEmpty) ...[
+                    const SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+                        child: Text(
+                          'ON VELORA',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textHint,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                      ),
+                    ),
+                    SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          final contact = onVelora[index];
+                          return ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: AppColors.avatarBackground,
+                              backgroundImage:
+                                  contact.photoUrl?.isNotEmpty == true
+                                      ? NetworkImage(contact.photoUrl!)
+                                      : null,
+                              child: contact.photoUrl?.isNotEmpty != true
+                                  ? Text(
+                                      contact.displayName.isEmpty
+                                          ? '?'
+                                          : contact.displayName[0]
+                                              .toUpperCase(),
+                                    )
+                                  : null,
+                            ),
+                            title: Text(contact.displayName),
+                            subtitle: Text(
+                              contact.veloraName != null &&
+                                      contact.veloraName != contact.displayName
+                                  ? 'Velora: ${contact.veloraName}'
+                                  : 'On Velora',
+                            ),
+                            trailing:
+                                const Icon(Icons.chat_bubble_outline_rounded),
+                            onTap: () => onTap(contact),
+                          );
+                        },
+                        childCount: onVelora.length,
+                      ),
+                    ),
+                  ],
 
-                  return ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: AppColors.avatarBackground,
-                      backgroundImage: user.photoUrl.isNotEmpty
-                          ? NetworkImage(user.photoUrl)
-                          : null,
-                      child: user.photoUrl.isEmpty
-                          ? Text(user.name.isEmpty ? '?' : user.name[0].toUpperCase())
-                          : null,
+                  // Invite section
+                  if (notOnVelora.isNotEmpty) ...[
+                    const SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+                        child: Text(
+                          'INVITE TO VELORA',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textHint,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                      ),
                     ),
-                    title: Text(match.contactName),
-                    subtitle: Text(
-                      user.name.isNotEmpty && user.name != match.contactName
-                          ? 'Velora name: ${user.name}'
-                          : 'On Velora',
+                    SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          final contact = notOnVelora[index];
+                          return ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: AppColors.avatarBackground,
+                              child: Text(
+                                contact.displayName.isEmpty
+                                    ? '?'
+                                    : contact.displayName[0].toUpperCase(),
+                              ),
+                            ),
+                            title: Text(contact.displayName),
+                            subtitle: Text(contact.phone),
+                            trailing: TextButton(
+                              onPressed: () {
+                                // TODO: native share
+                              },
+                              child: const Text('Invite'),
+                            ),
+                          );
+                        },
+                        childCount: notOnVelora.length,
+                      ),
                     ),
-                    trailing: const Icon(Icons.chat_bubble_outline_rounded),
-                    onTap: () => onTap(user),
-                  );
-                },
+                  ],
+                ],
               ),
             );
           },
@@ -364,6 +464,7 @@ class _ContactsList extends ConsumerWidget {
   }
 }
 
+// ── Permission Banner ────────────────────────────────────────────────
 class _PermissionBanner extends StatelessWidget {
   const _PermissionBanner({required this.onRequestPermission});
 

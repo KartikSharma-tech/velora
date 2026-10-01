@@ -1,62 +1,55 @@
-import '../../../../shared/enums/privacy_enums.dart';
-import '../../domain/repositories/contacts_repository.dart';
+// import 'package:cloud_firestore/cloud_firestore.dart';
+
+import '../../domain/entities/device_contact.dart';
+import '../../domain/entities/velora_contact.dart';
+import '../../domain/repositories/contact_repository.dart';
 import '../datasources/device_contacts_datasource.dart';
 import '../datasources/firestore_contacts_match_datasource.dart';
-import '../models/matched_contact_model.dart';
+import '../datasources/hive_contacts_datasource.dart';
 
-class ContactsRepositoryImpl implements ContactsRepository {
-  ContactsRepositoryImpl({
-    required this._deviceDataSource,
-    required this._matchDataSource,
-  });
-
+class ContactsRepositoryImpl implements ContactRepository {
   final DeviceContactsDataSource _deviceDataSource;
-  final FirestoreContactsMatchDataSource _matchDataSource;
+  final FirestoreContactsMatchDataSource _firestoreDataSource;
+  final HiveContactsDataSource _hiveDataSource;
+
+  ContactsRepositoryImpl({
+    required DeviceContactsDataSource deviceDataSource,
+    required FirestoreContactsMatchDataSource firestoreDataSource,
+    required HiveContactsDataSource hiveDataSource,
+  })  : _deviceDataSource = deviceDataSource,
+        _firestoreDataSource = firestoreDataSource,
+        _hiveDataSource = hiveDataSource;
 
   @override
-  Future<bool> hasContactsPermission() {
-    return _deviceDataSource.hasPermission();
-  }
+  Future<bool> requestPermission() => _deviceDataSource.requestPermission();
 
   @override
-  Future<bool> requestContactsPermission() {
-    return _deviceDataSource.requestPermission();
-  }
+  Future<bool> hasPermission() => _deviceDataSource.hasPermission();
 
   @override
-  Future<List<MatchedContact>> getMatchedContacts({
-    required String currentUserId,
-  }) async {
-    final hasPermission = await _deviceDataSource.hasPermission();
-    if (!hasPermission) return [];
+  Future<List<DeviceContact>> getDeviceContacts() =>
+      _deviceDataSource.getContacts();
 
-    final phoneToName = await _deviceDataSource.readContactPhoneNumbers();
+  @override
+  Future<Map<String, VeloraContact>> fetchVeloraUsers(
+    List<String> normalizedPhones,
+  ) =>
+      _firestoreDataSource.fetchVeloraUsers(normalizedPhones);
 
-    if (phoneToName.isEmpty) return [];
+  @override
+  Future<void> cacheContacts(List<VeloraContact> contacts) =>
+      _hiveDataSource.cacheContacts(contacts);
 
-    final registeredUsers = await _matchDataSource.findRegisteredUsers(
-      phoneToName.keys.toList(),
-      excludeUid: currentUserId,
-    );
+  @override
+  Future<List<VeloraContact>> getCachedContacts() =>
+      _hiveDataSource.getCachedContacts();
 
-    final matches = <MatchedContact>[];
+  @override
+  Future<bool> isCacheValid() => _hiveDataSource.isCacheValid();
 
-    for (final user in registeredUsers) {
-      // Only surface users who've opted into phone-based
-      // discoverability — "username" or "hidden" users don't show
-      // up here even if their number is in the address book.
-      if (user.discoverability != Discoverability.phoneNumber) continue;
+  @override
+  Future<void> clearCache() => _hiveDataSource.clearCache();
 
-      final contactName = phoneToName[user.phoneNumber];
-      if (contactName == null) continue;
-
-      matches.add(MatchedContact(contactName: contactName, user: user));
-    }
-
-    matches.sort(
-      (a, b) => a.contactName.toLowerCase().compareTo(b.contactName.toLowerCase()),
-    );
-
-    return matches;
-  }
+  @override
+  Future<DateTime?> lastSyncTime() => _hiveDataSource.lastSyncTime();
 }
