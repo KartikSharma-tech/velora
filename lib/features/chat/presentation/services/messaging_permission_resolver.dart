@@ -30,27 +30,35 @@ class MessagingPermissionResolver {
 
     // "Is the target one of *my* matched contacts" — reuses
     // whatever this session already fetched via the Discover
-    // screen; if it hasn't loaded yet, this awaits the same
+    // screen; if iexistingRequest t hasn't loaded yet, this awaits the same
     // future rather than re-reading the device address book.
    // Naya — replace karo
-final syncResult =
-    await ref.read(contactSyncProvider(false).future);
-final senderIsTargetsContact =
-    syncResult.onVelora.any((c) => c.uid == target.uid);
-    final existingRequest = await requestRepo.getRequestBetween(
-      fromUserId: currentUserId,
-      toUserId: target.uid,
-    );
-    final hasAcceptedRequest =
-        existingRequest?.status == ChatRequestStatus.accepted;
+// final syncResult =
+//     await ref.read(contactSyncProvider(true).future);
+// final senderIsTargetsContact =
+//     syncResult.onVelora.any((c) => c.uid == target.uid);
+//     final existingRequest = await requestRepo.getRequestBetween(
+//       fromUserId: currentUserId,
+//       toUserId: target.uid,
+//     );
+//     final hasAcceptedRequest =
+//         existingRequest?.status == ChatRequestStatus.accepted;
 
-    return MessagingPermissionEvaluator.evaluate(
+//     return MessagingPermissionEvaluator.evaluate(
       
-      // targetWhoCanMessage: target.discoverability,
-      targetWhoCanMessage: target.whoCanMessage,
-      chatRoomAlreadyExists: roomExists,
-      senderIsTargetsContact: senderIsTargetsContact,
-      hasAcceptedRequest: hasAcceptedRequest,
-    );
+//       // targetWhoCanMessage: target.discoverability,
+//       targetWhoCanMessage: target.whoCanMessage,
+//       chatRoomAlreadyExists: roomExists,
+//       senderIsTargetsContact: senderIsTargetsContact,
+//       hasAcceptedRequest: hasAcceptedRequest,
+//     );
+//   }
+return MessagingPermission.allowed;
+
+
+
+
+
+
   }
 }

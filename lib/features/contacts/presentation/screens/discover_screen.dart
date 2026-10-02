@@ -119,7 +119,9 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
   Future<void> _openVeloraContact(VeloraContact contact) async {
     if (contact.uid == null) return;
 
-    final user = ref.read(currentUserProvider(contact.uid!)).value;
+    // final user = ref.read(currentUserProvider(contact.uid!)).value;
+      final user = await ref.read(currentUserProvider(contact.uid!).future);
+
     if (user == null || !mounted) return;
 
     await _openUser(user);
