@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../../../app/router/app_router.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/app_spacing.dart';
@@ -23,19 +23,31 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   }
 
   Future<void> _initialize() async {
-    await Future.delayed(const Duration(seconds: 2));
+  await Future.delayed(const Duration(seconds: 2));
 
-    if (!mounted) return;
+  if (!mounted) return;
 
-    final isLoggedIn =
-        ref.read(authRepositoryProvider).isLoggedIn;
+  final isLoggedIn = ref.read(authRepositoryProvider).isLoggedIn;
 
-    if (isLoggedIn) {
-      context.go(AppRouter.home);
-    } else {
-      context.go(AppRouter.login);
-    }
+  if (!isLoggedIn) {
+    context.go(AppRouter.login);
+    return;
   }
+
+  // Email verification check
+  await FirebaseAuth.instance.currentUser?.reload();
+  final user = FirebaseAuth.instance.currentUser;
+
+  if (user != null && !user.emailVerified) {
+    // Verified nahi hai — logout karke login pe bhejo
+    await FirebaseAuth.instance.signOut();
+    if (!mounted) return;
+    context.go(AppRouter.login);
+    return;
+  }
+
+  context.go(AppRouter.home);
+}
 
   @override
   Widget build(BuildContext context) {
