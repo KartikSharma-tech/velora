@@ -25,7 +25,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   bool _initialized = false;
   bool _saving = false;
   String? _usernameError;
-  bool _checkingUsername = false;
+  // bool _checkingUsername = false;
 
   @override
   void dispose() {
@@ -99,47 +99,47 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     if (mounted) setState(() => _saving = false);
   }
 }
-  Future<void> _checkUsername(String username) async {
-    if (username.isEmpty) {
-      setState(() => _usernameError = null);
-      return;
-    }
+  // Future<void> _checkUsername(String username) async {
+  //   if (username.isEmpty) {
+  //     setState(() => _usernameError = null);
+  //     return;
+  //   }
 
-    setState(() {
-      _checkingUsername = true;
-      _usernameError = null;
-    });
+  //   setState(() {
+  //     _checkingUsername = true;
+  //     _usernameError = null;
+  //   });
 
-    try {
-      final uid = ref.read(currentUserIdProvider);
-      if (uid == null) return;
+  //   try {
+  //     final uid = ref.read(currentUserIdProvider);
+  //     if (uid == null) return;
 
-      final user = await ref.read(currentUserProvider(uid).future);
-      if (user == null) return;
+  //     final user = await ref.read(currentUserProvider(uid).future);
+  //     if (user == null) return;
 
-      if (username == user.username) {
-        setState(() {
-          _checkingUsername = false;
-          _usernameError = null;
-        });
-        return;
-      }
+  //     if (username == user.username) {
+  //       setState(() {
+  //         _checkingUsername = false;
+  //         _usernameError = null;
+  //       });
+  //       return;
+  //     }
 
-      final taken = await ref
-          .read(userRepositoryProvider)
-          .isUsernameTaken(username);
+  //     final taken = await ref
+  //         .read(userRepositoryProvider)
+  //         .isUsernameTaken(username);
 
-      setState(() {
-        _checkingUsername = false;
-        _usernameError = taken ? 'Username already taken' : null;
-      });
-    } catch (_) {
-      setState(() {
-        _checkingUsername = false;
-        _usernameError = 'Unable to check username';
-      });
-    }
-  }
+  //     setState(() {
+  //       _checkingUsername = false;
+  //       _usernameError = taken ? 'Username already taken' : null;
+  //     });
+  //   } catch (_) {
+  //     setState(() {
+  //       _checkingUsername = false;
+  //       _usernameError = 'Unable to check username';
+  //     });
+  //   }
+  // }
 
   Future<void> _save(String uid) async {
     final name = _nameController.text.trim();

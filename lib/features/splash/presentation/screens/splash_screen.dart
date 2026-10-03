@@ -21,8 +21,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     super.initState();
     _initialize();
   }
-
-  Future<void> _initialize() async {
+Future<void> _initialize() async {
   await Future.delayed(const Duration(seconds: 2));
 
   if (!mounted) return;
@@ -30,22 +29,25 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   final isLoggedIn = ref.read(authRepositoryProvider).isLoggedIn;
 
   if (!isLoggedIn) {
+    if (!mounted) return;
     context.go(AppRouter.login);
     return;
   }
 
-  // Email verification check
   await FirebaseAuth.instance.currentUser?.reload();
+
+  if (!mounted) return;
+
   final user = FirebaseAuth.instance.currentUser;
 
   if (user != null && !user.emailVerified) {
-    // Verified nahi hai — logout karke login pe bhejo
     await FirebaseAuth.instance.signOut();
     if (!mounted) return;
     context.go(AppRouter.login);
     return;
   }
 
+  if (!mounted) return;
   context.go(AppRouter.home);
 }
 
@@ -111,9 +113,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                 const SizedBox(
                   width: 26,
                   height: 26,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.6,
-                  ),
+                  child: CircularProgressIndicator(strokeWidth: 2.6),
                 ),
               ],
             ),

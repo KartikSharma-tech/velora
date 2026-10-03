@@ -231,31 +231,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
-  Future<void> _updateMessageStatus(List<MessageModel> messages) async {
-  final currentUserId = ref.read(currentUserIdProvider);
-
-  if (currentUserId == null) return;
-
-  for (final message in messages) {
-    if (message.receiverId != currentUserId) {
-      continue;
-    }
-
-    if (!message.isDelivered) {
-      await ref.read(chatRepositoryProvider).markMessageDelivered(
-            roomId: widget.roomId,
-            messageId: message.id,
-          );
-    }
-
-    if (!message.isSeen) {
-      await ref.read(chatRepositoryProvider).markMessageSeen(
-            roomId: widget.roomId,
-            messageId: message.id,
-          );
-    }
-  }
-}
+  
 
   // ============================================================
   // Message actions (long press)
@@ -462,9 +438,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       body: messagesAsync.when(
         data: (allMessages) {
 
-//           WidgetsBinding.instance.addPostFrameCallback((_) {
-//   _updateMessageStatus(allMessages);
-// });
+
           final messages = currentUserId == null
               ? allMessages
               : allMessages.where((m) => m.isVisibleTo(currentUserId)).toList();

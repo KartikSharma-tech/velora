@@ -7,7 +7,7 @@ import '../../features/auth/presentation/screens/signup_screen.dart';
 import '../../features/chat/presentation/screens/chat_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
-import '../../features/search/presentation/screens/search_users_screen.dart';
+// import '../../features/search/presentation/screens/search_users_screen.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
 import '../../features/splash/presentation/screens/splash_screen.dart';
 import '../../features/chat_requests/presentation/screens/chat_requests_screen.dart';

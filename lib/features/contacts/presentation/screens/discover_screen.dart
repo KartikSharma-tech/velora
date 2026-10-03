@@ -14,7 +14,7 @@ import '../../../user/presentation/providers/user_provider.dart';
 import '../../domain/entities/velora_contact.dart';
 import '../providers/contacts_provider.dart';
 import '../widgets/send_request_sheet.dart';
-
+import 'package:cloud_firestore/cloud_firestore.dart';
 class DiscoverScreen extends ConsumerStatefulWidget {
   const DiscoverScreen({super.key});
 
@@ -53,11 +53,12 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
   }
 
   Future<void> _openUser(UserModel target) async {
-    final currentUserId = ref.read(currentUserIdProvider);
-    if (currentUserId == null) return;
+  final currentUserId = ref.read(currentUserIdProvider);
+  if (currentUserId == null) return;
 
-    setState(() => _busy = true);
+  setState(() => _busy = true);
 
+  try {
     final permission = await MessagingPermissionResolver.resolve(
       ref: ref,
       currentUserId: currentUserId,
@@ -105,27 +106,39 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
         );
         break;
     }
+  } catch (e) {
+    if (mounted) {
+      setState(() => _busy = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${e.toString()}')),
+      );
+    }
   }
-
-  // Future<void> _openVeloraContact(VeloraContact contact) async {
-  //   if (contact.uid == null) return;
-
-  //   final userAsync = ref.read(currentUserProvider(contact.uid!));
-  //   final user = await userAsync.future;
-  //   if (user == null || !mounted) return;
-
-  //   await _openUser(user);
-  // }
+}
+  
   Future<void> _openVeloraContact(VeloraContact contact) async {
-    if (contact.uid == null) return;
+  if (contact.uid == null) return;
 
-    // final user = ref.read(currentUserProvider(contact.uid!)).value;
-      final user = await ref.read(currentUserProvider(contact.uid!).future);
+  setState(() => _busy = true);
 
-    if (user == null || !mounted) return;
+  try {
+    final userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(contact.uid!)
+        .get();
 
+    if (!userDoc.exists || !mounted) {
+      setState(() => _busy = false);
+      return;
+    }
+
+    final user = UserModel.fromMap(userDoc.data()!);
+    setState(() => _busy = false);
     await _openUser(user);
+  } catch (e) {
+    if (mounted) setState(() => _busy = false);
   }
+}
 
   @override
   Widget build(BuildContext context) {

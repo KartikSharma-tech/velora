@@ -28,7 +28,7 @@ class MessagingPermissionResolver {
       return MessagingPermission.allowed;
     }
 
-    final syncState = ref.read(contactSyncProvider(true));
+    final syncState = ref.read(contactSyncProvider(false));
 
     final senderIsTargetsContact = switch (syncState) {
       AsyncData(:final value) => value.onVelora.any((c) => c.uid == target.uid),

@@ -66,7 +66,8 @@ class _ChatRequestsScreenState extends ConsumerState<ChatRequestsScreen>
 
     return PopScope(
       canPop: context.canPop(),
-      onPopInvoked: (didPop) {
+
+      onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
         context.go(AppRouter.home);
       },

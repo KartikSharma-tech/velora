@@ -47,7 +47,7 @@ final hasContactsPermissionProvider = FutureProvider<bool>((ref) {
 final contactSyncProvider =
     FutureProvider.family<ContactSyncResult, bool>((ref, forceRefresh) {
   return ref
-      .watch(contactSyncEngineProvider)
+      .read(contactSyncEngineProvider)
       .sync(forceRefresh: forceRefresh);
 });
 
