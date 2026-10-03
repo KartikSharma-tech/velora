@@ -51,16 +51,14 @@ class FirestoreChatDataSource {
     return roomId;
   }
   // =========================================================
- Future<bool> chatRoomExists(List<String> participants) async {
-  final snapshot = await _chatRooms.get();
+  Future<bool> chatRoomExists(List<String> participants) async {
+  final ids = [...participants]..sort();
 
-  print("TOTAL ROOMS = ${snapshot.docs.length}");
+  final roomId = ids.join('_');
 
-  for (final d in snapshot.docs) {
-    print(d.id);
-  }
+  final doc = await _chatRooms.doc(roomId).get();
 
-  return false;
+  return doc.exists;
 }
 
   // ==========================================================

@@ -7,10 +7,6 @@ import '../../../user/data/models/user_model.dart';
 import '../../domain/services/messaging_permission.dart';
 import '../providers/chat_provider.dart';
 
-/// Gathers the three signals `MessagingPermissionEvaluator` needs
-/// (existing room / contact match / accepted request) and resolves
-/// whether [currentUserId] can message [target] directly, needs to
-/// send a Chat Request first, or is blocked outright.
 class MessagingPermissionResolver {
   const MessagingPermissionResolver._();
 
@@ -19,6 +15,10 @@ class MessagingPermissionResolver {
     required String currentUserId,
     required UserModel target,
   }) async {
+    if (currentUserId.isEmpty || target.uid.isEmpty) {
+      return MessagingPermission.blocked;
+    }
+
     final chatRepo = ref.read(chatRepositoryProvider);
     final requestRepo = ref.read(chatRequestRepositoryProvider);
 
@@ -28,37 +28,28 @@ class MessagingPermissionResolver {
       return MessagingPermission.allowed;
     }
 
-    // "Is the target one of *my* matched contacts" — reuses
-    // whatever this session already fetched via the Discover
-    // screen; if iexistingRequest t hasn't loaded yet, this awaits the same
-    // future rather than re-reading the device address book.
-   // Naya — replace karo
-// final syncResult =
-//     await ref.read(contactSyncProvider(true).future);
-// final senderIsTargetsContact =
-//     syncResult.onVelora.any((c) => c.uid == target.uid);
-//     final existingRequest = await requestRepo.getRequestBetween(
-//       fromUserId: currentUserId,
-//       toUserId: target.uid,
-//     );
-//     final hasAcceptedRequest =
-//         existingRequest?.status == ChatRequestStatus.accepted;
+    final syncState = ref.read(contactSyncProvider(true));
 
-//     return MessagingPermissionEvaluator.evaluate(
-      
-//       // targetWhoCanMessage: target.discoverability,
-//       targetWhoCanMessage: target.whoCanMessage,
-//       chatRoomAlreadyExists: roomExists,
-//       senderIsTargetsContact: senderIsTargetsContact,
-//       hasAcceptedRequest: hasAcceptedRequest,
-//     );
-//   }
-return MessagingPermission.allowed;
+    final senderIsTargetsContact = switch (syncState) {
+      AsyncData(:final value) => value.onVelora.any((c) => c.uid == target.uid),
+      AsyncLoading() => false,
+      AsyncError() => false,
+      _ => false,
+    };
 
+    final existingRequest = await requestRepo.getRequestBetween(
+      fromUserId: currentUserId,
+      toUserId: target.uid,
+    );
 
+    final hasAcceptedRequest =
+        existingRequest?.status == ChatRequestStatus.accepted;
 
-
-
-
+    return MessagingPermissionEvaluator.evaluate(
+      targetWhoCanMessage: target.whoCanMessage,
+      chatRoomAlreadyExists: roomExists,
+      senderIsTargetsContact: senderIsTargetsContact,
+      hasAcceptedRequest: hasAcceptedRequest,
+    );
   }
 }
