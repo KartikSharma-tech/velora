@@ -67,25 +67,27 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
     );
 
     if (!mounted) return;
-    setState(() => _busy = false);
+    // setState(() => _busy = false);
 
     switch (permission) {
       case MessagingPermission.allowed:
-        final roomId = await ref
-            .read(chatRepositoryProvider)
-            .createChatRoom(participants: [currentUserId, target.uid]);
-        if (!mounted) return;
-        context.push(
-          AppRouter.chat,
-          extra: {
-            'roomId': roomId,
-            'receiverId': target.uid,
-            'receiverName': target.name,
-          },
-        );
-        break;
-
+  final roomId = await ref
+      .read(chatRepositoryProvider)
+      .createChatRoom(participants: [currentUserId, target.uid]);
+  if (!mounted) return;
+  setState(() => _busy = false);  
+  context.push(
+    AppRouter.chat,
+    extra: {
+      'roomId': roomId,
+      'receiverId': target.uid,
+      'receiverName': target.name,
+    },
+  );
+  break;
       case MessagingPermission.requestRequired:
+        setState(() => _busy = false);  
+
         if (!mounted) return;
         showModalBottomSheet(
           context: context,
@@ -98,6 +100,8 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
         break;
 
       case MessagingPermission.blocked:
+        setState(() => _busy = false);  
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
