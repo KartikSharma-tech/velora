@@ -1,12 +1,13 @@
 import 'dart:io';
-
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-
+import 'dart:async';
 import '../../../../core/services/cloudinary_service.dart';
 import '../models/chat_room_model.dart';
 import '../models/message_model.dart';
 import '../models/chat_tile_model.dart';
 import '../../../user/data/models/user_model.dart';
+import 'package:flutter/foundation.dart';
 
 class FirestoreChatDataSource {
   FirestoreChatDataSource({
@@ -50,16 +51,17 @@ class FirestoreChatDataSource {
 
     return roomId;
   }
+
   // =========================================================
   Future<bool> chatRoomExists(List<String> participants) async {
-  final ids = [...participants]..sort();
+    final ids = [...participants]..sort();
 
-  final roomId = ids.join('_');
+    final roomId = ids.join('_');
 
-  final doc = await _chatRooms.doc(roomId).get();
+    final doc = await _chatRooms.doc(roomId).get();
 
-  return doc.exists;
-}
+    return doc.exists;
+  }
 
   // ==========================================================
   // Send Message
@@ -83,48 +85,41 @@ class FirestoreChatDataSource {
       'lastMessageTime': Timestamp.fromDate(message.timestamp),
       'lastMessageSeen': false,
     });
-  }// ==========================================================
-// Mark Message Delivered
-// ==========================================================
+  } // ==========================================================
+  // Mark Message Delivered
+  // ==========================================================
 
-Future<void> markMessageDelivered({
-  required String roomId,
-  required String messageId,
-  
-}) 
+  Future<void> markMessageDelivered({
+    required String roomId,
+    required String messageId,
+  }) async {
+    await _chatRooms.doc(roomId).collection('messages').doc(messageId).update({
+      'isDelivered': true,
+      'deliveredAt': DateTime.now().toIso8601String(),
+    });
+  }
+  // ==========================================================
+  // Mark Message Seen
+  // ==========================================================
 
-async {
-  await _chatRooms
-      .doc(roomId)
-      .collection('messages')
-      .doc(messageId)
-      .update({
-    'isDelivered': true,
-    'deliveredAt': DateTime.now().toIso8601String(),
-  });
-}
-// ==========================================================
-// Mark Message Seen
-// ==========================================================
-
-Future<void> markMessageSeen({
-  required String roomId,
-  required String messageId,
-}) async {
-  await _chatRooms
-      .doc(roomId)
-      .collection('messages')
-      .doc(messageId)
-      .update({
-    'isSeen': true,
-    'seenAt': DateTime.now().toIso8601String(),
-  });
-}
+  Future<void> markMessageSeen({
+    required String roomId,
+    required String messageId,
+  }) async {
+    await _chatRooms.doc(roomId).collection('messages').doc(messageId).update({
+      'isSeen': true,
+      'seenAt': DateTime.now().toIso8601String(),
+    });
+  }
   // ==========================================================
   // Messages Stream
   // ==========================================================
 
   Stream<List<MessageModel>> messageStream(String roomId) {
+    debugPrint("==========");
+    debugPrint("ROOM ID: $roomId");
+    debugPrint("==========");
+
     return _chatRooms
         .doc(roomId)
         .collection('messages')
@@ -140,17 +135,32 @@ Future<void> markMessageSeen({
   // Chat Rooms Stream
   // ==========================================================
 
-  Stream<List<ChatRoomModel>> chatRoomsStream(String userId) {
-    return _chatRooms
-        .where('participants', arrayContains: userId)
-        .orderBy('lastMessageTime', descending: true)
-        .snapshots()
-        .map(
-          (snapshot) => snapshot.docs
-              .map((e) => ChatRoomModel.fromMap(e.data()))
-              .toList(),
-        );
-  }
+ Stream<List<ChatRoomModel>> chatRoomsStream(String userId) {
+  print("==============");
+  print("Current User : $userId");
+  print("==============");
+
+  return _chatRooms
+      .where('participants', arrayContains: userId)
+      .orderBy('lastMessageTime', descending: true)
+      .snapshots()
+      .handleError((e) {
+        print("CHAT ROOM ERROR");
+        print(e);
+      })
+      .map((snapshot) {
+        print("Docs : ${snapshot.docs.length}");
+
+        for (var doc in snapshot.docs) {
+          print(doc.id);
+          print(doc.data());
+        }
+
+        return snapshot.docs
+            .map((e) => ChatRoomModel.fromMap(e.data()))
+            .toList();
+      });
+}
 
   // ==========================================================
   // Mark Last Message Seen
@@ -178,7 +188,18 @@ Future<void> markMessageSeen({
             final otherUserId = room.participants.firstWhere(
               (id) => id != currentUserId,
             );
+            try {
+              final userDoc = await _firestore
+                  .collection('users')
+                  .doc(otherUserId)
+                  .get();
 
+              print("USER FOUND = ${userDoc.id}");
+            } catch (e, st) {
+              print("USER DOC ERROR");
+              print(e);
+              print(st);
+            }
             final userDoc = await _firestore
                 .collection('users')
                 .doc(otherUserId)
@@ -227,25 +248,21 @@ Future<void> markMessageSeen({
     required String messageId,
     required String userId,
   }) async {
-    await _chatRooms.doc(roomId).collection('messages').doc(messageId).update(
-      {
-        'deletedFor': FieldValue.arrayUnion([userId]),
-      },
-    );
+    await _chatRooms.doc(roomId).collection('messages').doc(messageId).update({
+      'deletedFor': FieldValue.arrayUnion([userId]),
+    });
   }
 
   Future<void> deleteMessageForEveryone({
     required String roomId,
     required String messageId,
   }) async {
-    await _chatRooms.doc(roomId).collection('messages').doc(messageId).update(
-      {
-        'isDeletedForEveryone': true,
-        'text': '',
-        'imageUrl': null,
-        'reactions': <String, String>{},
-      },
-    );
+    await _chatRooms.doc(roomId).collection('messages').doc(messageId).update({
+      'isDeletedForEveryone': true,
+      'text': '',
+      'imageUrl': null,
+      'reactions': <String, String>{},
+    });
   }
 
   // ==========================================================

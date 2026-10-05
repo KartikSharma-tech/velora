@@ -15,6 +15,7 @@ import '../../domain/entities/velora_contact.dart';
 import '../providers/contacts_provider.dart';
 import '../widgets/send_request_sheet.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+   import 'dart:async';
 class DiscoverScreen extends ConsumerStatefulWidget {
   const DiscoverScreen({super.key});
 
