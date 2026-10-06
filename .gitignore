@@ -43,3 +43,31 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+# ==========================
+# Secrets
+# ==========================
+.env
+.env.*
+*.env
+
+# Firebase Admin SDK
+serviceAccountKey.json
+firebase-adminsdk*.json
+
+# Android Signing
+android/key.properties
+*.jks
+*.keystore
+
+# iOS Signing
+ios/Runner/*.p12
+ios/Runner/*.mobileprovision
+
+# Local Firebase
+.firebase/
+
+# IDE Settings
+.vscode/settings.json
+
+# OS Files
+Thumbs.db
