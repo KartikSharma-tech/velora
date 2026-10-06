@@ -1,101 +1,174 @@
-# Velora Architecture
+# Velora — Architecture
 
-## Overview
-
-Velora follows a Feature-First Clean Architecture.
-
-The goal is to separate UI, Business Logic, and Data Layer to keep the project scalable, testable, and maintainable.
+Last Updated: 2026-10-06
 
 ---
 
-# High Level Architecture
+# Overview
 
-Presentation
-↓
-Provider (Riverpod)
-↓
-UseCase / Service / Sync Engine
-↓
-Repository (Abstract)
-↓
-Repository Implementation
-↓
-Local / Remote Data Sources
-↓
-Hive / Firebase / Cloudinary
+Velora is a production-ready Flutter chat application built using:
+
+- Clean Architecture
+- Feature-First Architecture
+- Repository Pattern
+- SOLID Principles
+- Riverpod
+- Dependency Injection
+- Offline-First Design
+
+The architecture separates Presentation, Business Logic, and Data layers to maximize scalability, maintainability, testability, and long-term growth.
+
+---
+
+# Technology Stack
+
+Frontend
+
+- Flutter
+- Dart
+
+State Management
+
+- Riverpod
+
+Backend
+
+- Firebase Authentication
+- Cloud Firestore
+- Firebase Cloud Messaging
+- Firebase Realtime Database
+
+Local Storage
+
+- Hive
+
+Media
+
+- Cloudinary
+
+Navigation
+
+- GoRouter
+
+---
+
+# High-Level Architecture
+
+```
+                 UI
+                 │
+                 ▼
+      Presentation Layer
+                 │
+                 ▼
+      Riverpod Providers
+                 │
+                 ▼
+     UseCases / Services
+     Sync Engines / Resolver
+                 │
+                 ▼
+ Repository (Abstract Interface)
+                 │
+                 ▼
+ Repository Implementation
+          │             │
+          ▼             ▼
+ Local Data       Remote Data
+    Hive          Firebase
+                    │
+                    ▼
+          Firestore / Auth /
+         Realtime DB / FCM /
+           Cloudinary
+```
 
 ---
 
 # Layer Responsibilities
 
-## Presentation
+## Presentation Layer
 
-Responsible for:
+Contains
 
 - Screens
 - Widgets
-- User Interaction
 - Navigation
+- UI State
 
-Rules:
+Responsibilities
 
-- No Firebase calls
-- No Firestore queries
+- Display data
+- Handle user interactions
+- Listen to Providers
+
+Never
+
+- Call Firebase
+- Query Firestore
+- Write business logic
+
+---
+
+## Provider Layer
+
+Riverpod Providers
+
+Responsibilities
+
+- Expose state
+- Call repositories
+- Trigger use cases
+
+Rules
+
+- Lightweight
 - No business logic
+- No Firestore queries
 
 ---
 
-## Providers
+## Domain Layer
 
-Responsible for:
+Contains
 
-- State Management
-- Calling UseCases
-- Managing UI State
+- Entities
+- Repository Interfaces
+- UseCases
 
-Rules:
+Business Logic
 
-- Keep providers lightweight.
-- Business logic belongs elsewhere.
-
----
-
-## UseCases / Services / Sync Engines
-
-Responsible for:
-
-- Business Logic
 - Validation
-- Feature Workflow
-- Synchronization
+- Decision Making
+- Workflow
 
-Examples:
+Examples
 
 - ContactSyncEngine
-- AuthService
-- ChatService
+- MessagingPermissionResolver
+- PhoneNormalizer
 
 ---
 
-## Repository
+## Repository Layer
 
-Responsible for:
+Responsibilities
 
-- Defining interfaces.
-- Hiding implementation details.
+- Hide implementation
+- Expose clean interfaces
 
-Rules:
-
-- No UI code.
-- No widget references.
+Presentation communicates only with Repository interfaces.
 
 ---
 
 ## Repository Implementation
 
-Responsible for:
+Responsibilities
 
-Connecting repositories with data sources.
+- Combine Local + Remote Data
+- Cache Management
+- Synchronization
+- Data Transformation
 
 ---
 
@@ -103,63 +176,96 @@ Connecting repositories with data sources.
 
 ### Remote
 
-- Firebase Auth
+- Firebase Authentication
 - Cloud Firestore
-- Firebase Messaging
 - Firebase Realtime Database
+- Firebase Cloud Messaging
 - Cloudinary
 
 ### Local
 
 - Hive
 
+Rules
+
+Only CRUD operations.
+
+No business logic.
+
 ---
 
 # Feature Structure
 
+```
 features/
 
 auth/
-
 chat/
-
+chat_requests/
 contacts/
-
 home/
-
 profile/
-
+search/
+notifications/
 settings/
-
 splash/
+stories/
+calls/
+groups/
+communities/
+```
 
-Each feature contains:
+Each feature follows
 
-- data/
-- domain/
-- presentation/
+```
+feature/
+
+data/
+    datasources/
+    models/
+    repositories/
+
+domain/
+    entities/
+    repositories/
+    usecases/
+
+presentation/
+    providers/
+    screens/
+    widgets/
+```
 
 ---
 
 # Data Flow
 
-User taps button
+```
+User
 
 ↓
 
-Provider
+Screen
 
 ↓
 
-UseCase / Sync Engine
+Riverpod Provider
 
 ↓
 
-Repository
+UseCase / Service
 
 ↓
 
-Datasource
+Repository Interface
+
+↓
+
+Repository Implementation
+
+↓
+
+Remote / Local Datasource
 
 ↓
 
@@ -175,7 +281,154 @@ Provider
 
 ↓
 
-UI Updates
+UI Update
+```
+
+---
+
+# Messaging Flow
+
+### Contact Available
+
+```
+Device Contacts
+
+↓
+
+Contact Sync
+
+↓
+
+Firestore Matching
+
+↓
+
+Matched Contact
+
+↓
+
+Direct Chat
+```
+
+---
+
+### Unknown User
+
+```
+Search Username
+
+↓
+
+Send Chat Request
+
+↓
+
+Accept
+
+↓
+
+Create Chat Room
+
+↓
+
+Messaging Enabled
+```
+
+Rejected request
+
+↓
+
+No messaging access
+
+---
+
+# Offline Strategy
+
+Hive stores
+
+- User
+- Contacts
+- Settings
+- Cached Chats
+- Preferences
+
+Firestore remains source of truth.
+
+Future
+
+- Offline Messaging Queue
+- Background Synchronization
+
+---
+
+# Dependency Rules
+
+Allowed
+
+```
+Presentation
+      ↓
+Domain
+      ↓
+Repository
+      ↓
+Datasource
+```
+
+Forbidden
+
+❌ UI → Firebase
+
+❌ UI → Firestore
+
+❌ Widget → Hive
+
+❌ Screen → Cloudinary
+
+❌ Provider → Firestore
+
+---
+
+# Performance Strategy
+
+- Prefer const widgets
+- Cache contacts
+- Cache user profile
+- Minimize Firestore reads
+- Lazy loading
+- Pagination
+- Stream only required collections
+- Reuse widgets
+- Dispose controllers
+
+---
+
+# Security Architecture
+
+Authentication
+
+- Firebase Authentication
+
+Authorization
+
+- Firestore Security Rules
+
+Storage
+
+- Hive (non-sensitive)
+- flutter_secure_storage (planned)
+
+Validation
+
+- Input Validation
+- Phone Number Normalization
+
+Future
+
+- Firebase App Check
+- End-to-End Encryption
+- Secure Storage
+- Certificate Pinning
 
 ---
 
@@ -185,42 +438,34 @@ UI Updates
 - SOLID Principles
 - Repository Pattern
 - Feature-First
-- Riverpod
+- Separation of Concerns
+- Composition over Inheritance
 - Dependency Injection
 - Reusable Widgets
-- Separation of Concerns
 
 ---
 
-# Performance Rules
+# Scalability
 
-- Minimize Firestore reads.
-- Use Hive cache whenever possible.
-- Keep widgets const where possible.
-- Avoid rebuilding unnecessary widgets.
-- Use Streams only when required.
+Current architecture supports future implementation of
 
----
-
-# Security Rules
-
-- Never expose secrets.
-- Never call Firebase directly from UI.
-- Validate user input.
-- Use Firestore Security Rules.
-- Respect user privacy settings.
-
----
-
-# Future Scalability
-
-Architecture supports:
-
-- Group Chats
-- Voice Messages
-- Video Calls
+- Group Chat
 - Communities
-- Status
-- Offline Mode
-- Background Sync
+- Voice Messages
+- Video Sharing
+- Voice Calling
+- Video Calling
+- Stories
+- Chat Search
+- Chat Backup
 - Multi-device Support
+- End-to-End Encryption
+- AI Features
+
+without requiring major architectural changes.
+
+---
+
+# Project Goal
+
+Velora is designed to be a production-ready Flutter application demonstrating modern mobile engineering practices, scalable architecture, and enterprise-level code organization suitable for real-world deployment and technical interviews.

@@ -1,6 +1,6 @@
-# Velora Feature Status
+# Velora — Feature Status
 
-Last Updated: 2026-09-29
+Last Updated: 2026-10-06
 
 ---
 
@@ -12,13 +12,16 @@ Last Updated: 2026-09-29
 | Login | ✅ Completed |
 | Signup | ✅ Completed |
 | Logout | ✅ Completed |
-| Forgot Password UI | ✅ Completed |
-| Phone Number Signup | ⏳ In Progress |
-| Email Verification | ⏳ Pending |
+| Forgot Password | ✅ Completed |
+| Remember Me | ✅ Completed |
+| Session Persistence | ✅ Completed |
+| Phone Number Authentication | 🚧 In Progress |
+| Email Verification | ⏳ Planned |
+| Account Recovery | ⏳ Planned |
 
 ---
 
-# Profile
+# User Profile
 
 | Feature | Status |
 |----------|--------|
@@ -26,7 +29,11 @@ Last Updated: 2026-09-29
 | Edit Profile | ✅ Completed |
 | Username | ✅ Completed |
 | About | ✅ Completed |
-| Cloudinary Profile Photo | ✅ Completed |
+| Profile Picture Upload | ✅ Completed |
+| Cloudinary Integration | ✅ Completed |
+| Online Status | ✅ Completed |
+| Last Seen | ✅ Completed |
+| Privacy Settings | ⏳ Planned |
 
 ---
 
@@ -35,15 +42,19 @@ Last Updated: 2026-09-29
 | Feature | Status |
 |----------|--------|
 | One-to-One Chat | ✅ Completed |
+| Real-time Messaging | ✅ Completed |
 | Chat Requests | ✅ Completed |
-| Delete Messages | ✅ Completed |
-| Message Reactions | ✅ Completed |
 | Typing Indicator | ✅ Completed |
-| Read Receipts | ⏳ Planned |
-| Reply Message | ✅ Completed |
-| Forward Message | ⏳ Planned |
-| Archive Chat | ⏳ Planned |
+| Message Reply | ✅ Completed |
+| Delete for Me | ✅ Completed |
+| Delete for Everyone | ✅ Completed |
+| Message Reactions | ✅ Completed |
 | Pin Chat | ✅ Completed |
+| Read Receipts | 🚧 In Progress |
+| Forward Messages | ⏳ Planned |
+| Archive Chats | ⏳ Planned |
+| Starred Messages | ⏳ Planned |
+| Message Search | ⏳ Planned |
 
 ---
 
@@ -53,10 +64,11 @@ Last Updated: 2026-09-29
 |----------|--------|
 | Contact Sync | ✅ Completed |
 | Phone Number Normalization | ✅ Completed |
-| Hive Cache | ✅ Completed |
+| Hive Offline Cache | ✅ Completed |
 | Firestore Matching | ✅ Completed |
-| Invite Friends | ⏳ Pending |
-| Auto Sync | ⏳ Planned |
+| Contact Refresh | ✅ Completed |
+| Invite Friends | 🚧 In Progress |
+| Automatic Background Sync | ⏳ Planned |
 
 ---
 
@@ -65,9 +77,12 @@ Last Updated: 2026-09-29
 | Feature | Status |
 |----------|--------|
 | Profile Photo Upload | ✅ Completed |
-| Image Sharing | ⏳ Pending |
-| Voice Messages | ⏳ Planned |
+| Cloudinary Upload | ✅ Completed |
+| Image Sharing | 🚧 In Progress |
+| Multiple Image Support | ⏳ Planned |
 | Video Sharing | ⏳ Planned |
+| Voice Messages | ⏳ Planned |
+| File Sharing | ⏳ Planned |
 
 ---
 
@@ -75,55 +90,181 @@ Last Updated: 2026-09-29
 
 | Feature | Status |
 |----------|--------|
-| Firebase Messaging | ⏳ Pending |
-| Push Notifications | ⏳ Pending |
+| Firebase Cloud Messaging | 🚧 In Progress |
+| Push Notifications | 🚧 In Progress |
+| Background Notifications | ⏳ Planned |
+| Notification Preferences | ⏳ Planned |
 
 ---
 
-# Future Features
+# Offline Support
+
+| Feature | Status |
+|----------|--------|
+| Hive Storage | ✅ Completed |
+| Offline User Cache | ✅ Completed |
+| Offline Contacts | ✅ Completed |
+| Offline Chats | 🚧 In Progress |
+| Background Sync | ⏳ Planned |
+
+---
+
+# Settings
+
+| Feature | Status |
+|----------|--------|
+| Settings Screen | ✅ Completed |
+| Theme Support | ✅ Completed |
+| Account Settings | 🚧 In Progress |
+| Notification Settings | ⏳ Planned |
+| Privacy Settings | ⏳ Planned |
+| Chat Wallpaper | ⏳ Planned |
+
+---
+
+# Security
+
+| Feature | Status |
+|----------|--------|
+| Firebase Authentication | ✅ Completed |
+| Firestore Security Rules | 🚧 In Progress |
+| Input Validation | ✅ Completed |
+| Secure Storage | 🚧 In Progress |
+| Device Verification | ⏳ Planned |
+
+---
+
+# Future Roadmap
+
+## Phase 2
 
 - Group Chat
 - Communities
+- Broadcast Messages
+- Chat Search
+- Archive Chats
+- Forward Messages
+- Read Receipts
+
+---
+
+## Phase 3
+
 - Status / Stories
-- Voice Call
-- Video Call
+- Voice Messages
+- Video Sharing
+- File Sharing
+- Chat Wallpaper
+- Notification Preferences
+
+---
+
+## Phase 4
+
+- Voice Calling
+- Video Calling
+- Screen Sharing
 - Chat Backup
 - Multi-device Sync
-- Chat Search
+- End-to-End Encryption
+- AI Chat Assistant
 
 ---
 
 # Current Sprint
 
-🎯 Current Task
+🎯 Active Development
 
-- Phone Number Signup
-- Email Verification
-- Invite Friends
+- Phone Number Authentication
+- Image Sharing
 - Push Notifications
+- Invite Friends
+- Read Receipts
+- Firestore Security Rules
 
 ---
 
-# Release Progress
+# Release Roadmap
 
-Version 0.1
+## Version 0.1 (Current)
 
 ✅ Authentication
-
-✅ Chat
 
 ✅ Profile
 
 ✅ Contacts
 
-⬜ Notifications
+✅ One-to-One Chat
 
-⬜ Media
+🚧 Media
 
-⬜ Release Build
+🚧 Notifications
+
+🚧 Offline Improvements
+
+---
+
+## Version 0.2
+
+- Group Chat
+- Read Receipts
+- Archive Chats
+- Message Forward
+- Chat Search
+
+---
+
+## Version 1.0
+
+- Voice Call
+- Video Call
+- Status
+- Communities
+- Multi-device Support
+- End-to-End Encryption
 
 ---
 
 # Overall Progress
 
-████████░░ 80%
+```
+██████████░░░░░░░░ 62%
+```
+
+## Progress Summary
+
+- Authentication ............. 95%
+- Chat Core .................. 90%
+- Profile .................... 95%
+- Contacts ................... 95%
+- Offline Support ............ 75%
+- Media ...................... 40%
+- Notifications .............. 35%
+- Security ................... 60%
+- Advanced Features .......... 15%
+
+---
+
+# Project Health
+
+🟢 Architecture
+
+🟢 Code Quality
+
+🟢 UI Consistency
+
+🟢 Folder Structure
+
+🟢 State Management
+
+🟡 Offline Support
+
+🟡 Notifications
+
+🟡 Security Hardening
+
+🔴 Voice & Video Features
+
+---
+
+**Goal:** Deliver a production-ready, scalable Flutter chat application suitable for real-world deployment, technical interviews, and portfolio demonstration.

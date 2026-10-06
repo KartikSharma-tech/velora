@@ -1,26 +1,42 @@
 # Changelog
 
-All notable changes to this project will be documented here.
+All notable changes to Velora are documented here.
+
+The project follows semantic versioning.
 
 ---
 
-# Version 0.1.0
+# v0.1.0 — Foundation
 
 ## Added
 
-- Flutter project setup
-- Firebase integration
+- Flutter project initialized
+- Clean Architecture setup
+- Feature-First folder structure
 - Riverpod state management
 - GoRouter navigation
-- Authentication
-- Splash screen
-- Login
-- Signup
-- Forgot Password screen
+- Firebase Core integration
+- Hive local storage
+- App theming system
+- Project architecture and documentation
 
 ---
 
-# Version 0.2.0
+# v0.2.0 — Authentication
+
+## Added
+
+- Splash Screen
+- Login
+- Signup
+- Logout
+- Forgot Password
+- Session Persistence
+- Firebase Authentication
+
+---
+
+# v0.3.0 — Chat Foundation
 
 ## Added
 
@@ -28,64 +44,152 @@ All notable changes to this project will be documented here.
 - User Search
 - Username Search
 - One-to-One Chat
-- Chat Requests
+- Chat Rooms
+- Real-time Messaging
+- Firestore Chat Repository
+- Chat Models
 
 ---
 
-# Version 0.3.0
+# v0.4.0 — Advanced Messaging
 
 ## Added
 
-- Typing Indicator
-- Message Reactions
-- Delete Messages
 - Reply Message
+- Delete for Me
+- Delete for Everyone
+- Message Reactions
+- Typing Indicator
 - Pin Chat
+- Chat List Improvements
 
 ---
 
-# Version 0.4.0
+# v0.5.0 — Profile & Contacts
 
 ## Added
 
 - Profile Screen
 - Username Editing
 - About Editing
-- Cloudinary Profile Upload
+- Cloudinary Profile Image Upload
+- Device Contact Permission
+- Contact Sync Engine
+- E.164 Phone Number Normalization
+- Firestore Contact Matching
+- Hive Contact Cache
+- Invite to Velora Section
+- On Velora Section
 
 ---
 
-# Version 0.5.0
+# v0.6.0 — Privacy & Messaging Flow
 
 ## Added
 
-- Contact Sync
-- E.164 Phone Normalization
-- Hive Contact Cache
-- Firestore Contact Matching
-- Sync Engine
-- ON VELORA Section
-- INVITE TO VELORA Section
+- Contact-based Messaging
+- Chat Request System
+- Contact Discovery Flow
+- Repository Refactoring
+- Messaging Permission Resolver
+- Chat Request Repository
+- Firestore Security Rule Improvements
+
+## Changed
+
+- Removed global messaging between all users.
+- Users can directly chat only with saved contacts.
+- Unknown users must send a Chat Request before messaging.
+- Improved Firestore security permissions.
+- Improved repository architecture.
+
+## Fixed
+
+- Firestore Permission Denied issue
+- Chat Room access issue
+- Message stream permission errors
+- Repository interface inconsistencies
+- Provider dependency issues
 
 ---
 
-# Upcoming (v0.6.0)
+# v0.7.0 — Current Development
 
-- Phone Number Signup
-- Email Verification
-- Invite Friends
-- Push Notifications
+## In Progress
 
----
-
-# Future
-
+- Phone Authentication
+- Read Receipts (Delivered / Seen)
 - Image Sharing
+- Push Notifications
+- Invite Friends Improvements
+- Firebase App Check
+- Firestore Security Hardening
+
+---
+
+# Planned (v0.8.0)
+
 - Archive Chats
-- Voice Messages
-- Group Chats
+- Forward Messages
+- Chat Search
+- Notification Settings
+- Background Sync
+- Offline Chat Improvements
+
+---
+
+# Planned (v0.9.0)
+
+- Group Chat
 - Communities
-- Status
-- Voice Calls
-- Video Calls
+- Broadcast Messages
+- Voice Messages
+- File Sharing
+- Video Sharing
+- Chat Wallpaper
+
+---
+
+# Planned (v1.0.0)
+
+- Voice Calling
+- Video Calling
+- Status / Stories
 - Multi-device Sync
+- Chat Backup
+- End-to-End Encryption
+- Production Release
+
+---
+
+# Milestones
+
+✅ Clean Architecture
+
+✅ Feature-First Structure
+
+✅ Firebase Authentication
+
+✅ Real-time Chat
+
+✅ Contact Sync
+
+✅ Contact-Based Messaging
+
+✅ Chat Requests
+
+✅ Cloudinary Integration
+
+🚧 Push Notifications
+
+🚧 Image Sharing
+
+🚧 Phone Authentication
+
+⏳ End-to-End Encryption
+
+⏳ Voice & Video Calling
+
+---
+
+Last Updated: 2026-10-06

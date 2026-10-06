@@ -8,7 +8,7 @@ import '../../../../core/utils/formatters.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../chat/data/models/chat_tile_model.dart';
 import '../../../chat/presentation/providers/chat_provider.dart';
-
+import 'package:firebase_auth/firebase_auth.dart';
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
@@ -31,6 +31,10 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final userId = ref.watch(currentUserIdProvider);
+    debugPrint("========== HOME ==========");
+debugPrint("Firebase UID : ${FirebaseAuth.instance.currentUser?.uid}");
+debugPrint("Provider UID : $userId");
+debugPrint("==========================");
 
     if (userId == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
