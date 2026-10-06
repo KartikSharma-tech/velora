@@ -7,7 +7,6 @@ import '../models/chat_room_model.dart';
 import '../models/message_model.dart';
 import '../models/chat_tile_model.dart';
 import '../../../user/data/models/user_model.dart';
-import 'package:flutter/foundation.dart';
 
 class FirestoreChatDataSource {
   FirestoreChatDataSource({

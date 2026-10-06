@@ -13,12 +13,10 @@ class ContactsRepositoryImpl implements ContactRepository {
   final HiveContactsDataSource _hiveDataSource;
 
   ContactsRepositoryImpl({
-    required DeviceContactsDataSource deviceDataSource,
+    required this._deviceDataSource,
     required FirestoreContactsMatchDataSource firestoreDataSource,
-    required HiveContactsDataSource hiveDataSource,
-  })  : _deviceDataSource = deviceDataSource,
-        _firestoreDataSource = firestoreDataSource,
-        _hiveDataSource = hiveDataSource;
+    required this._hiveDataSource,
+  })  : _firestoreDataSource = firestoreDataSource;
 
   @override
   Future<bool> requestPermission() => _deviceDataSource.requestPermission();
