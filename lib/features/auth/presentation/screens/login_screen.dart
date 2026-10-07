@@ -42,17 +42,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     });
 
     try {
-      await ref
-          .read(authRepositoryProvider)
-          .signIn(
-            email: _emailController.text.trim(),
-            password: _passwordController.text,
-          );
+  debugPrint("STEP 1 - Login clicked");
 
-      if (!mounted) return;
+  await ref
+      .read(authRepositoryProvider)
+      .signIn(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+
+  debugPrint("STEP 2 - SignIn completed");
+
+  if (!mounted) return;
+
+  final user = FirebaseAuth.instance.currentUser;
+
+  debugPrint("STEP 3 - User UID: ${user?.uid}");
 
       // Email verification check
-      final user = FirebaseAuth.instance.currentUser;
+      // final user = FirebaseAuth.instance.currentUser;
+      
       if (user != null && !user.emailVerified) {
         // Logout kar do — verified nahi hai
         await FirebaseAuth.instance.signOut();
@@ -80,8 +89,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         setState(() => _loading = false);
         return;
       }
+       debugPrint("STEP 4 - Going Home");
 
-      context.go(AppRouter.home);
+  context.go(AppRouter.home);
+
+  debugPrint("STEP 5 - Navigation Called");
+
+      // context.go(AppRouter.home);
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
 
