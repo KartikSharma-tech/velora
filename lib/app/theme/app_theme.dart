@@ -46,7 +46,8 @@ final class AppTheme {
 
       colorScheme: colorScheme,
 
-      primaryColor: AppColors.primary,
+
+      // primaryColor: AppColors.primary,
       scaffoldBackgroundColor: AppColors.background,
 
       canvasColor: AppColors.surface,
@@ -58,6 +59,7 @@ final class AppTheme {
       textTheme: AppTextTheme.light,
 
       fontFamily: 'Inter',
+      
 
       visualDensity: VisualDensity.adaptivePlatformDensity,
 
@@ -174,7 +176,9 @@ final class AppTheme {
 
       colorScheme: colorScheme,
 
-      primaryColor: AppColors.primary,
+      // primaryColor: AppColors.primary,
+
+      
       scaffoldBackgroundColor: AppColors.backgroundDark,
 
       canvasColor: AppColors.surfaceDark,

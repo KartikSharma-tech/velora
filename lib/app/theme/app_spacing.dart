@@ -35,12 +35,25 @@ final class AppSpacing {
   static const double xxxl = 32;
   static const double huge = 40;
   static const double massive = 48;
-  static const double giant = 56;
-  static const double ultra = 64;
+  // static const double giant = 56;
+  // static const double ultra = 64;
+  static const BorderRadius radiusSM = BorderRadius.all(Radius.circular(8));
 
+  static const BorderRadius radiusMD = BorderRadius.all(Radius.circular(12));
+
+  static const BorderRadius radiusLG = BorderRadius.all(Radius.circular(18));
+
+  static const BorderRadius radiusXL = BorderRadius.all(Radius.circular(24));
   // ===========================================================
   // Screen Padding
   // ===========================================================
+
+  static const Duration fast = Duration(milliseconds: 180);
+
+  static const Duration normal = Duration(milliseconds: 300);
+
+  static const Duration slow = Duration(milliseconds: 500);
+  static const double cardElevation = 6;
 
   static const EdgeInsets screenPadding = EdgeInsets.symmetric(
     horizontal: lg,
@@ -51,21 +64,15 @@ final class AppSpacing {
     horizontal: lg,
   );
 
-  static const EdgeInsets screenVertical = EdgeInsets.symmetric(
-    vertical: lg,
-  );
+  static const EdgeInsets screenVertical = EdgeInsets.symmetric(vertical: lg);
 
   // ===========================================================
   // Page Sections
   // ===========================================================
 
-  static const EdgeInsets section = EdgeInsets.symmetric(
-    vertical: xxl,
-  );
+  static const EdgeInsets section = EdgeInsets.symmetric(vertical: xxl);
 
-  static const EdgeInsets sectionSmall = EdgeInsets.symmetric(
-    vertical: lg,
-  );
+  static const EdgeInsets sectionSmall = EdgeInsets.symmetric(vertical: lg);
 
   // ===========================================================
   // Card

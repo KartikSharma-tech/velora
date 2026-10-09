@@ -19,11 +19,11 @@ final class AppColors {
   // Brand
   // ===========================================================
 
-  static const Color primary = Color(0xFF4F46E5);
-  static const Color primaryDark = Color(0xFF4338CA);
+  static const Color primary = Color(0xFF6C63FF);
+  static const Color primaryDark = Color(0xFF5A4FF5);
   static const Color primaryLight = Color(0xFFE0E7FF);
 
-  static const Color accent = Color(0xFF3B82F6);
+  static const Color accent = Color(0xFF8B5CF6);
 
   // ===========================================================
   // Background
@@ -31,9 +31,18 @@ final class AppColors {
 
   static const Color background = Color(0xFFF8FAFC);
   static const Color backgroundDark = Color(0xFF0F172A);
+  static const Color glow = Color(0x556C63FF);
+  static const Color glowDark = Color(0x335A4FF5);
 
   // ===========================================================
   // Surface
+  // ===========================================================
+  static const Color glass = Color(0x14FFFFFF);
+
+  static const Color glassBorder = Color(0x22FFFFFF);
+  static const Color shadow = Color(0x22000000);
+  // ===========================================================
+  // Glass card
   // ===========================================================
 
   static const Color surface = Colors.white;
@@ -111,7 +120,9 @@ final class AppColors {
   static const Color receiverBubble = surfaceVariant;
 
   static const Color senderBubbleDark = primary;
-  static const Color receiverBubbleDark = Color(0xFF334155);  // ===========================================================
+  static const Color receiverBubbleDark = Color(
+    0xFF334155,
+  ); // ===========================================================
   // Avatar
   // ===========================================================
 
@@ -187,38 +198,34 @@ final class AppColors {
   static const LinearGradient primaryGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [
-      primary,
-      accent,
-    ],
+    colors: [Color(0xFF6C63FF), Color(0xFF5A4FF5)],
   );
 
   static const LinearGradient darkGradient = LinearGradient(
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
-    colors: [
-      Color(0xFF1E293B),
-      Color(0xFF0F172A),
-    ],
+    colors: [Color(0xFF1E293B), Color(0xFF0F172A)],
   );
 
   static const LinearGradient successGradient = LinearGradient(
-    colors: [
-      Color(0xFF10B981),
-      Color(0xFF059669),
-    ],
+    colors: [Color(0xFF10B981), Color(0xFF059669)],
   );
 
   static const LinearGradient errorGradient = LinearGradient(
-    colors: [
-      Color(0xFFEF4444),
-      Color(0xFFDC2626),
-    ],
+    colors: [Color(0xFFEF4444), Color(0xFFDC2626)],
   );
 
   // ===========================================================
   // Transparent
   // ===========================================================
+
+// HOME UI
+
+   static const Color unreadBadge = Color(0xFFFF4D6D);
+
+  //  loGIN?
+
+  static const Color cardDark = Color(0xFF1A2236);
 
   static const Color transparent = Colors.transparent;
 }

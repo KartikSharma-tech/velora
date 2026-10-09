@@ -39,29 +39,28 @@ final class AppTypography {
   // ===========================================================
 
   static const TextStyle base = TextStyle(
-    fontFamily: fontFamily,
-    color: Colors.black,
-    fontWeight: regular,
-    height: 1.35,
-    letterSpacing: 0,
-  );
+  fontFamily: fontFamily,
+  fontWeight: regular,
+  height: 1.35,
+  letterSpacing: 0,
+);
 
   // ===========================================================
   // Display
   // ===========================================================
 
   static TextStyle get displayLarge => base.copyWith(
-        fontSize: 40,
+        fontSize: 44,
         fontWeight: extraBold,
       );
 
   static TextStyle get displayMedium => base.copyWith(
-        fontSize: 34,
+        fontSize: 36,
         fontWeight: bold,
       );
 
   static TextStyle get displaySmall => base.copyWith(
-        fontSize: 30,
+        fontSize: 32,
         fontWeight: bold,
       );
 
@@ -70,7 +69,7 @@ final class AppTypography {
   // ===========================================================
 
   static TextStyle get headlineLarge => base.copyWith(
-        fontSize: 28,
+        fontSize: 30,
         fontWeight: bold,
       );
 
@@ -143,7 +142,7 @@ final class AppTypography {
   // ===========================================================
 
   static TextStyle get button => base.copyWith(
-        fontSize: 15,
+        fontSize: 16,
         fontWeight: semiBold,
       );
 
@@ -153,7 +152,7 @@ final class AppTypography {
 
   static TextStyle get message => base.copyWith(
         fontSize: 15,
-        height: 1.45,
+        height: 1.50,
       );
 
   static TextStyle get messageTime => base.copyWith(
@@ -171,7 +170,7 @@ final class AppTypography {
   // ===========================================================
 
   static TextStyle get caption => base.copyWith(
-        fontSize: 12,
+        fontSize: 11,
       );
 
   static TextStyle get overline => base.copyWith(
