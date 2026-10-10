@@ -48,10 +48,11 @@ final chatTilesProvider =
     StreamProvider.family<List<ChatTileModel>, String>((
   ref,
   currentUserId,
-) {
-  return ref.watch(chatRepositoryProvider).getChatTiles(currentUserId);
+) async* {
+  // Firestore gRPC token propagate hone ka waqt do
+  await Future.delayed(const Duration(seconds: 1));
+  yield* ref.watch(chatRepositoryProvider).getChatTiles(currentUserId);
 });
-
 // ==========================================================
 // Messages
 // ==========================================================

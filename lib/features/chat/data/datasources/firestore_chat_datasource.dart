@@ -193,11 +193,9 @@ class FirestoreChatDataSource {
                   .doc(otherUserId)
                   .get();
 
-              print("USER FOUND = ${userDoc.id}");
+
             } catch (e, st) {
-              print("USER DOC ERROR");
-              print(e);
-              print(st);
+             
             }
             final userDoc = await _firestore
                 .collection('users')

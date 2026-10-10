@@ -6,7 +6,6 @@ import '../../../../app/router/app_router.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/app_spacing.dart';
 import '../../../../app/theme/app_typography.dart';
-import '../../../auth/presentation/providers/auth_provider.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -21,35 +20,45 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     super.initState();
     _initialize();
   }
-Future<void> _initialize() async {
-  await Future.delayed(const Duration(seconds: 2));
 
-  if (!mounted) return;
-
-  final isLoggedIn = ref.read(authRepositoryProvider).isLoggedIn;
-
-  if (!isLoggedIn) {
+  Future<void> _initialize() async {
+    // Minimum splash display time
+    await Future.delayed(const Duration(seconds: 2));
     if (!mounted) return;
-    context.go(AppRouter.login);
-    return;
-  }
 
-  await FirebaseAuth.instance.currentUser?.reload();
+    // authStateChanges wait — Firebase auth genuinely ready hone tak
+    final user = await FirebaseAuth.instance.authStateChanges().first;
 
-  if (!mounted) return;
-
-  final user = FirebaseAuth.instance.currentUser;
-
-  if (user != null && !user.emailVerified) {
-    await FirebaseAuth.instance.signOut();
     if (!mounted) return;
-    context.go(AppRouter.login);
-    return;
-  }
 
-  if (!mounted) return;
-  context.go(AppRouter.home);
-}
+    if (user == null) {
+      context.go(AppRouter.login);
+      return;
+    }
+
+    // reload + force token refresh
+    try {
+      await user.reload();
+      await user.getIdToken(true);
+    } catch (_) {}
+
+    if (!mounted) return;
+
+    final freshUser = FirebaseAuth.instance.currentUser;
+
+    if (freshUser == null || !freshUser.emailVerified) {
+      await FirebaseAuth.instance.signOut();
+      if (!mounted) return;
+      context.go(AppRouter.login);
+      return;
+    }
+
+    // Extra wait — Firestore SDK ko token propagate karne ka waqt do
+    await Future.delayed(const Duration(milliseconds: 800));
+    if (!mounted) return;
+
+    context.go(AppRouter.home);
+  }
 
   @override
   Widget build(BuildContext context) {
