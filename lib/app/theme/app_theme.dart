@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import 'app_colors.dart';
 import 'app_radius.dart';
@@ -58,8 +59,8 @@ final class AppTheme {
 
       textTheme: AppTextTheme.light,
 
-      fontFamily: 'Inter',
-      
+      fontFamily: GoogleFonts.inter().fontFamily,
+
 
       visualDensity: VisualDensity.adaptivePlatformDensity,
 
@@ -178,7 +179,7 @@ final class AppTheme {
 
       // primaryColor: AppColors.primary,
 
-      
+
       scaffoldBackgroundColor: AppColors.backgroundDark,
 
       canvasColor: AppColors.surfaceDark,
@@ -189,7 +190,7 @@ final class AppTheme {
 
       textTheme: AppTextTheme.dark,
 
-      fontFamily: 'Inter',
+      fontFamily: GoogleFonts.inter().fontFamily,
 
       visualDensity: VisualDensity.adaptivePlatformDensity,
             // =======================================================
@@ -360,16 +361,16 @@ final class AppTheme {
       // Bottom Navigation Bar
       // =======================================================
 
-      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: AppColors.surfaceDark,
         selectedItemColor: AppColors.primary,
         unselectedItemColor: AppColors.iconSecondaryDark,
         selectedLabelStyle: TextStyle(
-          fontFamily: 'Inter',
+          fontFamily: GoogleFonts.inter().fontFamily,
           fontWeight: FontWeight.w600,
         ),
         unselectedLabelStyle: TextStyle(
-          fontFamily: 'Inter',
+          fontFamily: GoogleFonts.inter().fontFamily,
           fontWeight: FontWeight.w500,
         ),
         type: BottomNavigationBarType.fixed,
