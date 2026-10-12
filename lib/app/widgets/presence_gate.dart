@@ -1,21 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../features/auth/presentation/providers/auth_provider.dart';
-import '../../features/user/presentation/providers/user_provider.dart';
+import '../../../features/auth/presentation/providers/auth_provider.dart';
+import '../../../features/user/presentation/providers/user_provider.dart';
 
-/// Wraps the whole app (above [MaterialApp.router]) and keeps
-/// `users/{uid}.isOnline` in sync with real app state.
-///
-/// BUG FIX: `setOnlineStatus()` already existed on the user
-/// repository but nothing in the UI ever called it — every user's
-/// presence froze at whatever `isOnline` was written during signup
-/// (`true`, forever), so "Online" / "Last seen" never reflected
-/// reality. This widget is the missing wiring:
-///  - flips online -> true the moment a user is authenticated
-///  - flips online -> false (with a fresh lastSeen) when the app is
-///    backgrounded / closed
-///  - flips back to true on resume
+/// PresenceGate — user ke online/offline status ko track karta hai.
+/// currentUserIdProvider ab StreamProvider hai, isliye ref.listen ka
+/// type AsyncValue<String?> hona chahiye aur .valueOrNull se value nikalte hain.
 class PresenceGate extends ConsumerStatefulWidget {
   const PresenceGate({super.key, required this.child});
 
@@ -43,19 +34,12 @@ class _PresenceGateState extends ConsumerState<PresenceGate>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    final uid = _currentUid;
-    if (uid == null) return;
-
-    switch (state) {
-      case AppLifecycleState.resumed:
-        _setOnline(uid, true);
-        break;
-      case AppLifecycleState.paused:
-      case AppLifecycleState.detached:
-      case AppLifecycleState.inactive:
-      case AppLifecycleState.hidden:
-        _setOnline(uid, false);
-        break;
+    if (_currentUid == null) return;
+    if (state == AppLifecycleState.resumed) {
+      _setOnline(_currentUid!, true);
+    } else if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      _setOnline(_currentUid!, false);
     }
   }
 
@@ -68,21 +52,30 @@ class _PresenceGateState extends ConsumerState<PresenceGate>
 
   @override
   Widget build(BuildContext context) {
-    ref.listen<String?>(currentUserIdProvider, (previous, next) {
-      if (previous == next) return;
+    // FIX: currentUserIdProvider ab StreamProvider<String?> hai
+    // Type AsyncValue<String?> hona chahiye, .valueOrNull se value nikalo
+    ref.listen<AsyncValue<String?>>(
+      currentUserIdProvider,
+      (previous, next) {
+        final prevVal = previous?.valueOrNull;
+        final nextVal = next.valueOrNull;
 
-      // Just logged in / app resumed with an existing session.
-      if (next != null) {
-        _currentUid = next;
-        _setOnline(next, true);
-      }
+        // Koi change nahi — early return
+        if (prevVal == nextVal) return;
 
-      // Just logged out — mark the *previous* user offline.
-      if (next == null && previous != null) {
-        _setOnline(previous, false);
-        _currentUid = null;
-      }
-    });
+        // User login hua
+        if (nextVal != null) {
+          _currentUid = nextVal;
+          _setOnline(nextVal, true);
+        }
+
+        // User logout hua
+        if (nextVal == null && prevVal != null) {
+          _setOnline(prevVal, false);
+          _currentUid = null;
+        }
+      },
+    );
 
     return widget.child;
   }

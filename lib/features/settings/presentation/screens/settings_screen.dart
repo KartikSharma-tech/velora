@@ -19,7 +19,8 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeModeProvider);
-    final userId = ref.watch(currentUserIdProvider);
+    // FIX: StreamProvider hai to .valueOrNull use karo
+    final userId = ref.watch(currentUserIdProvider).valueOrNull;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
@@ -28,36 +29,43 @@ class SettingsScreen extends ConsumerWidget {
         children: [
           const Padding(
             padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
-            child: Text('Appearance', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: Text('Appearance',
+                style: TextStyle(fontWeight: FontWeight.bold)),
           ),
           RadioListTile<ThemeMode>(
             title: const Text('Light'),
             value: ThemeMode.light,
             groupValue: themeMode,
-            onChanged: (mode) => ref.read(themeModeProvider.notifier).set(mode!),
+            onChanged: (mode) =>
+                ref.read(themeModeProvider.notifier).set(mode!),
           ),
           RadioListTile<ThemeMode>(
             title: const Text('Dark'),
             value: ThemeMode.dark,
             groupValue: themeMode,
-            onChanged: (mode) => ref.read(themeModeProvider.notifier).set(mode!),
+            onChanged: (mode) =>
+                ref.read(themeModeProvider.notifier).set(mode!),
           ),
           RadioListTile<ThemeMode>(
             title: const Text('System default'),
             value: ThemeMode.system,
             groupValue: themeMode,
-            onChanged: (mode) => ref.read(themeModeProvider.notifier).set(mode!),
+            onChanged: (mode) =>
+                ref.read(themeModeProvider.notifier).set(mode!),
           ),
           const Divider(height: 32),
           const Padding(
             padding: EdgeInsets.fromLTRB(16, 0, 16, 4),
-            child: Text('Privacy', style: TextStyle(fontWeight: FontWeight.bold)),
+            child:
+                Text('Privacy', style: TextStyle(fontWeight: FontWeight.bold)),
           ),
           if (userId != null) _BlockedUsersList(userId: userId),
           const Divider(height: 32),
           ListTile(
-            leading: const Icon(Icons.logout_rounded, color: AppColors.error),
-            title: const Text('Logout', style: TextStyle(color: AppColors.error)),
+            leading:
+                const Icon(Icons.logout_rounded, color: AppColors.error),
+            title: const Text('Logout',
+                style: TextStyle(color: AppColors.error)),
             onTap: () => _logout(context, ref),
           ),
         ],
@@ -87,7 +95,8 @@ class _BlockedUsersList extends ConsumerWidget {
         if (blocked.isEmpty) {
           return const Padding(
             padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: Text('No blocked users', style: TextStyle(color: AppColors.textHint)),
+            child: Text('No blocked users',
+                style: TextStyle(color: AppColors.textHint)),
           );
         }
 
@@ -112,7 +121,9 @@ class _BlockedUsersList extends ConsumerWidget {
                         ? NetworkImage(user.photoUrl)
                         : null,
                     child: user.photoUrl.isEmpty
-                        ? Text(user.name.isEmpty ? '?' : user.name[0].toUpperCase())
+                        ? Text(user.name.isEmpty
+                            ? '?'
+                            : user.name[0].toUpperCase())
                         : null,
                   ),
                   title: Text(user.name),

@@ -84,7 +84,9 @@ class FirestoreChatDataSource {
       'lastMessageTime': Timestamp.fromDate(message.timestamp),
       'lastMessageSeen': false,
     });
-  } // ==========================================================
+  }
+
+  // ==========================================================
   // Mark Message Delivered
   // ==========================================================
 
@@ -97,6 +99,7 @@ class FirestoreChatDataSource {
       'deliveredAt': DateTime.now().toIso8601String(),
     });
   }
+
   // ==========================================================
   // Mark Message Seen
   // ==========================================================
@@ -110,15 +113,12 @@ class FirestoreChatDataSource {
       'seenAt': DateTime.now().toIso8601String(),
     });
   }
+
   // ==========================================================
   // Messages Stream
   // ==========================================================
 
   Stream<List<MessageModel>> messageStream(String roomId) {
-    debugPrint("==========");
-    debugPrint("ROOM ID: $roomId");
-    debugPrint("==========");
-
     return _chatRooms
         .doc(roomId)
         .collection('messages')
@@ -134,32 +134,20 @@ class FirestoreChatDataSource {
   // Chat Rooms Stream
   // ==========================================================
 
- Stream<List<ChatRoomModel>> chatRoomsStream(String userId) {
-  print("==============");
-  print("Current User : $userId");
-  print("==============");
-
-  return _chatRooms
-      .where('participants', arrayContains: userId)
-      .orderBy('lastMessageTime', descending: true)
-      .snapshots()
-      .handleError((e) {
-        print("CHAT ROOM ERROR");
-        print(e);
-      })
-      .map((snapshot) {
-        print("Docs : ${snapshot.docs.length}");
-
-        for (var doc in snapshot.docs) {
-          print(doc.id);
-          print(doc.data());
-        }
-
-        return snapshot.docs
-            .map((e) => ChatRoomModel.fromMap(e.data()))
-            .toList();
-      });
-}
+  Stream<List<ChatRoomModel>> chatRoomsStream(String userId) {
+    return _chatRooms
+        .where('participants', arrayContains: userId)
+        .orderBy('lastMessageTime', descending: true)
+        .snapshots()
+        .handleError((e) {
+          debugPrint('chatRoomsStream error: $e');
+        })
+        .map((snapshot) {
+          return snapshot.docs
+              .map((e) => ChatRoomModel.fromMap(e.data()))
+              .toList();
+        });
+  }
 
   // ==========================================================
   // Mark Last Message Seen
@@ -187,16 +175,7 @@ class FirestoreChatDataSource {
             final otherUserId = room.participants.firstWhere(
               (id) => id != currentUserId,
             );
-            try {
-              final userDoc = await _firestore
-                  .collection('users')
-                  .doc(otherUserId)
-                  .get();
 
-
-            } catch (e, st) {
-             
-            }
             final userDoc = await _firestore
                 .collection('users')
                 .doc(otherUserId)
@@ -218,7 +197,6 @@ class FirestoreChatDataSource {
                 lastMessageTime: room.lastMessageTime,
                 lastMessageSeen: room.lastMessageSeen,
                 otherUserOnline: user.isOnline,
-                // otherUserLastSeen: user.lastSeen,
                 otherUserLastSeen: user.lastSeen ?? DateTime.now(),
                 isPinned: room.pinnedBy.contains(currentUserId),
               ),
@@ -325,11 +303,6 @@ class FirestoreChatDataSource {
   // Image Upload
   // ==========================================================
 
-  /// Uploads a local image file to
-  /// `chat_images/{roomId}/{messageId}.jpg` in Firebase Storage
-  /// and returns its public download URL. Called *before*
-  /// `sendMessage()` — the resulting URL is what actually gets
-  /// saved on the message doc.
   Future<String> uploadChatImage({
     required String roomId,
     required String messageId,

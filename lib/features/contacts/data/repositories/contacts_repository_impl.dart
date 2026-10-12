@@ -14,9 +14,9 @@ class ContactsRepositoryImpl implements ContactRepository {
 
   ContactsRepositoryImpl({
     required this._deviceDataSource,
-    required FirestoreContactsMatchDataSource firestoreDataSource,
+    required this._firestoreDataSource,
     required this._hiveDataSource,
-  })  : _firestoreDataSource = firestoreDataSource;
+  });
 
   @override
   Future<bool> requestPermission() => _deviceDataSource.requestPermission();

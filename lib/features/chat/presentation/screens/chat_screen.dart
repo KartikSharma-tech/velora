@@ -75,7 +75,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   void _setTyping(bool isTyping) {
-    final userId = ref.read(currentUserIdProvider);
+    // FIX: StreamProvider hai to .valueOrNull use karo
+    final userId = ref.read(currentUserIdProvider).valueOrNull;
     if (userId == null || _iAmTyping == isTyping) return;
     _iAmTyping = isTyping;
     ref.read(chatRepositoryProvider).setTyping(
@@ -93,7 +94,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final text = _messageController.text.trim();
     if (text.isEmpty) return;
 
-    final senderId = ref.read(currentUserIdProvider);
+    // FIX: StreamProvider hai to .valueOrNull use karo
+    final senderId = ref.read(currentUserIdProvider).valueOrNull;
     if (senderId == null) return;
 
     final replyTo = _replyingTo;
@@ -141,21 +143,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   // ============================================================
 
   Future<void> _pickAndSendImage() async {
-    final senderId = ref.read(currentUserIdProvider);
+    // FIX: StreamProvider hai to .valueOrNull use karo
+    final senderId = ref.read(currentUserIdProvider).valueOrNull;
     if (senderId == null) return;
 
     List<XFile> picked;
     try {
-      // Multiple selection — each one is sent as its own message,
-      // same as WhatsApp when you multi-select from the gallery.
       picked = await ImagePicker().pickMultiImage(
         imageQuality: 70,
         maxWidth: 1600,
       );
     } catch (error) {
-      // Picker itself failing is almost always a missing native
-      // permission (READ_MEDIA_IMAGES / Photos usage description) —
-      // surface the real reason instead of a generic message.
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Could not open gallery: $error')),
@@ -198,8 +196,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       } catch (error, stackTrace) {
         failures++;
         lastError = error;
-        // ignore: avoid_print
-        print('Image send failed for $messageId: $error\n$stackTrace');
+        debugPrint('Image send failed for $messageId: $error\n$stackTrace');
       }
     }
 
@@ -213,9 +210,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
     if (mounted) {
       if (failures == picked.length) {
-        // Every single upload failed — almost certainly Storage
-        // rules or auth, not a per-image issue. Show the real
-        // exception so it's actually debuggable.
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Image failed to send: $lastError'),
@@ -224,21 +218,22 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         );
       } else if (failures > 0) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$failures of ${picked.length} images failed to send')),
+          SnackBar(
+              content:
+                  Text('$failures of ${picked.length} images failed to send')),
         );
       }
       setState(() => _isUploadingImage = false);
     }
   }
 
-  
-
   // ============================================================
   // Message actions (long press)
   // ============================================================
 
   void _openMessageActions(MessageModel message, bool isMe) {
-    final currentUserId = ref.read(currentUserIdProvider);
+    // FIX: StreamProvider hai to .valueOrNull use karo
+    final currentUserId = ref.read(currentUserIdProvider).valueOrNull;
     if (currentUserId == null) return;
 
     showModalBottomSheet(
@@ -255,7 +250,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: _quickReactions.map((emoji) {
-                  final isSelected = message.reactions[currentUserId] == emoji;
+                  final isSelected =
+                      message.reactions[currentUserId] == emoji;
                   return GestureDetector(
                     onTap: () {
                       Navigator.pop(context);
@@ -276,7 +272,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                             : Colors.transparent,
                         shape: BoxShape.circle,
                       ),
-                      child: Text(emoji, style: const TextStyle(fontSize: 24)),
+                      child:
+                          Text(emoji, style: const TextStyle(fontSize: 24)),
                     ),
                   );
                 }).toList(),
@@ -289,8 +286,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   Navigator.pop(context);
                   setState(() {
                     _replyingTo = message.copyWith(
-                      replyToSenderName:
-                          message.senderId == currentUserId ? 'You' : widget.receiverName,
+                      replyToSenderName: message.senderId == currentUserId
+                          ? 'You'
+                          : widget.receiverName,
                     );
                   });
                 },
@@ -308,7 +306,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   },
                 ),
               ListTile(
-                leading: const Icon(Icons.delete_outline_rounded, color: AppColors.error),
+                leading: const Icon(Icons.delete_outline_rounded,
+                    color: AppColors.error),
                 title: Text(
                   'Delete for me',
                   style: TextStyle(color: AppColors.error),
@@ -324,14 +323,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               ),
               if (isMe)
                 ListTile(
-                  leading: const Icon(Icons.delete_forever_rounded, color: AppColors.error),
+                  leading: const Icon(Icons.delete_forever_rounded,
+                      color: AppColors.error),
                   title: Text(
                     'Delete for everyone',
                     style: TextStyle(color: AppColors.error),
                   ),
                   onTap: () {
                     Navigator.pop(context);
-                    ref.read(chatRepositoryProvider).deleteMessageForEveryone(
+                    ref
+                        .read(chatRepositoryProvider)
+                        .deleteMessageForEveryone(
                           roomId: widget.roomId,
                           messageId: message.id,
                         );
@@ -350,7 +352,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   // ============================================================
 
   Future<void> _toggleBlock(bool currentlyBlocked) async {
-    final myId = ref.read(currentUserIdProvider);
+    // FIX: StreamProvider hai to .valueOrNull use karo
+    final myId = ref.read(currentUserIdProvider).valueOrNull;
     if (myId == null) return;
 
     final repo = ref.read(userRepositoryProvider);
@@ -386,13 +389,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     final messagesAsync = ref.watch(messagesProvider(widget.roomId));
-    final currentUserId = ref.watch(currentUserIdProvider);
+    // FIX: StreamProvider hai to .valueOrNull use karo
+    final currentUserId = ref.watch(currentUserIdProvider).valueOrNull;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final myUserAsync = currentUserId == null
         ? const AsyncValue<dynamic>.data(null)
         : ref.watch(currentUserProvider(currentUserId));
-    final receiverUserAsync = ref.watch(currentUserProvider(widget.receiverId));
+    final receiverUserAsync =
+        ref.watch(currentUserProvider(widget.receiverId));
 
     final iHaveBlockedThem = myUserAsync.maybeWhen(
       data: (user) => user?.blockedUsers.contains(widget.receiverId) ?? false,
@@ -422,7 +427,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   hintText: 'Search messages',
                   border: InputBorder.none,
                 ),
-                onChanged: (value) => setState(() => _searchQuery = value.trim()),
+                onChanged: (value) =>
+                    setState(() => _searchQuery = value.trim()),
               ),
             )
           : ChatAppBar(
@@ -437,11 +443,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           isDark ? AppColors.backgroundDark : AppColors.background,
       body: messagesAsync.when(
         data: (allMessages) {
-
-
           final messages = currentUserId == null
               ? allMessages
-              : allMessages.where((m) => m.isVisibleTo(currentUserId)).toList();
+              : allMessages
+                  .where((m) => m.isVisibleTo(currentUserId))
+                  .toList();
 
           final visibleMessages = _searchQuery.isEmpty
               ? messages
@@ -559,7 +565,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         error: (error, stackTrace) => Center(
           child: Padding(
             padding: const EdgeInsets.all(20),
-            child: Text(error.toString(), textAlign: TextAlign.center),
+            child:
+                Text(error.toString(), textAlign: TextAlign.center),
           ),
         ),
       ),
