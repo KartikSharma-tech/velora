@@ -7,9 +7,6 @@ import '../../../chat_requests/presentation/providers/chat_request_provider.dart
 import '../../../user/data/models/user_model.dart';
 import '../../../user/presentation/providers/user_provider.dart';
 
-/// Shown when messaging [target] requires a Chat Request first
-/// (their "Who can message me" is Contacts + Accepted Requests and
-/// the sender isn't a matched contact).
 class SendRequestSheet extends ConsumerStatefulWidget {
   const SendRequestSheet({super.key, required this.target});
 
@@ -31,17 +28,16 @@ class _SendRequestSheetState extends ConsumerState<SendRequestSheet> {
   }
 
   Future<void> _send() async {
-    final currentUserId = ref.read(currentUserIdProvider);
-    if (currentUserId == null) return;
+    // PERMANENT FIX: appUserProvider — guaranteed UserModel, no UID juggling
+    final myUser = ref.read(appUserProvider).valueOrNull;
+    if (myUser == null) return;
 
     setState(() => _sending = true);
 
-    final myUser = await ref.read(userRepositoryProvider).getUser(currentUserId);
-
     await ref.read(chatRequestRepositoryProvider).sendRequest(
-          fromUserId: currentUserId,
-          fromUserName: myUser?.name ?? '',
-          fromUserPhoto: myUser?.photoUrl ?? '',
+          fromUserId: myUser.uid,
+          fromUserName: myUser.name,
+          fromUserPhoto: myUser.photoUrl,
           toUserId: widget.target.uid,
           toUserName: widget.target.name,
           toUserPhoto: widget.target.photoUrl,
@@ -74,7 +70,8 @@ class _SendRequestSheetState extends ConsumerState<SendRequestSheet> {
                 const SizedBox(height: 12),
                 Text(
                   'Request sent to ${widget.target.name}',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 16),
                 ),
                 const SizedBox(height: 6),
                 const Text(
@@ -110,12 +107,14 @@ class _SendRequestSheetState extends ConsumerState<SendRequestSheet> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(widget.target.name,
-                              style: const TextStyle(fontWeight: FontWeight.bold)),
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold)),
                           Text(
                             "${widget.target.name} only accepts messages from "
                             "contacts or accepted requests.",
                             style: const TextStyle(
-                                fontSize: 12, color: AppColors.textHint),
+                                fontSize: 12,
+                                color: AppColors.textHint),
                           ),
                         ],
                       ),

@@ -13,7 +13,6 @@ import '../../../chat/presentation/providers/chat_provider.dart';
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
-  // ── Colors ────────────────────────────────────────────────
   static const _bg = Color(0xFF0F172A);
   static const _surface = Color(0xFF1E293B);
   static const _surface2 = Color(0xFF1A2332);
@@ -32,7 +31,8 @@ class HomeScreen extends ConsumerWidget {
     } catch (_) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Unable to logout. Please try again.')),
+          const SnackBar(
+              content: Text('Unable to logout. Please try again.')),
         );
       }
     }
@@ -40,155 +40,170 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // StreamProvider — Firebase Auth ready hone pe emit karta hai
-    final userIdAsync = ref.watch(currentUserIdProvider);
-    final userId = userIdAsync.valueOrNull;
+    // PERMANENT FIX: appUserProvider — Auth + Firestore dono ready hone pe hi render
+    final userAsync = ref.watch(appUserProvider);
 
-    if (userId == null) {
-      return const Scaffold(
+    return userAsync.when(
+      loading: () => const Scaffold(
+        backgroundColor: _bg,
+        body: Center(child: CircularProgressIndicator(color: _primary)),
+      ),
+      error: (e, _) => Scaffold(
         backgroundColor: _bg,
         body: Center(
-          child: CircularProgressIndicator(color: _primary),
-        ),
-      );
-    }
+            child: Text(e.toString(),
+                style: const TextStyle(color: _textSecondary))),
+      ),
+      data: (user) {
+        if (user == null) {
+          return const Scaffold(
+            backgroundColor: _bg,
+            body: Center(child: CircularProgressIndicator(color: _primary)),
+          );
+        }
 
-    final chatsAsync = ref.watch(chatTilesProvider(userId));
-    final currentUserAsync = ref.watch(currentUserProvider(userId));
+        final chatsAsync = ref.watch(chatTilesProvider(user.uid));
 
-    return Scaffold(
-      backgroundColor: _bg,
-      extendBodyBehindAppBar: true,
-      appBar: _buildAppBar(context, ref, currentUserAsync, userId),
-      body: Stack(
-        children: [
-          _buildBackground(),
-          SafeArea(
-            child: RefreshIndicator(
-              color: _primary,
-              backgroundColor: _surface,
-              onRefresh: () async {
-                await Future.delayed(const Duration(milliseconds: 400));
-              },
-              child: CustomScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                slivers: [
-                  // Profile Card
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                      child: _buildProfileCard(
-                        context,
-                        ref,
-                        currentUserAsync,
-                        userId,
-                      ),
-                    ),
-                  ),
-
-                  // Section header
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 28, 20, 12),
-                      child: Row(
-                        children: [
-                          const Text(
-                            'Messages',
-                            style: TextStyle(
-                              color: _textPrimary,
-                              fontSize: 20,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: -0.3,
-                            ),
-                          ),
-                          const Spacer(),
-                          chatsAsync.maybeWhen(
-                            data: (chats) => chats.isNotEmpty
-                                ? Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 3,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: _primary.withValues(alpha: 0.15),
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    child: Text(
-                                      '${chats.length}',
-                                      style: const TextStyle(
-                                        color: _primary,
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  )
-                                : const SizedBox.shrink(),
-                            orElse: () => const SizedBox.shrink(),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  // Chat list
-                  chatsAsync.when(
-                    loading: () => const SliverFillRemaining(
-                      child: Center(
-                        child: CircularProgressIndicator(color: _primary),
-                      ),
-                    ),
-                    error: (error, _) => SliverFillRemaining(
-                      child: Center(
+        return Scaffold(
+          backgroundColor: _bg,
+          extendBodyBehindAppBar: true,
+          appBar: _buildAppBar(context, ref, user.name, user.photoUrl,
+              user.uid),
+          body: Stack(
+            children: [
+              _buildBackground(),
+              SafeArea(
+                child: RefreshIndicator(
+                  color: _primary,
+                  backgroundColor: _surface,
+                  onRefresh: () async {
+                    await Future.delayed(
+                        const Duration(milliseconds: 400));
+                  },
+                  child: CustomScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    slivers: [
+                      SliverToBoxAdapter(
                         child: Padding(
-                          padding: const EdgeInsets.all(24),
-                          child: Text(
-                            error.toString(),
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(color: _textSecondary),
+                          padding:
+                              const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                          child: _buildProfileCard(
+                            context,
+                            name: user.name,
+                            photoUrl: user.photoUrl,
                           ),
                         ),
                       ),
-                    ),
-                    data: (chats) {
-                      if (chats.isEmpty) {
-                        return SliverFillRemaining(
-                          child: _buildEmptyState(),
-                        );
-                      }
-                      return SliverPadding(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
-                        sliver: SliverList(
-                          delegate: SliverChildBuilderDelegate(
-                            (context, index) => Padding(
-                              padding: const EdgeInsets.only(bottom: 2),
-                              child: _buildChatTile(
-                                context,
-                                ref,
-                                chats[index],
-                                userId,
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding:
+                              const EdgeInsets.fromLTRB(20, 28, 20, 12),
+                          child: Row(
+                            children: [
+                              const Text(
+                                'Messages',
+                                style: TextStyle(
+                                  color: _textPrimary,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: -0.3,
+                                ),
+                              ),
+                              const Spacer(),
+                              chatsAsync.maybeWhen(
+                                data: (chats) => chats.isNotEmpty
+                                    ? Container(
+                                        padding:
+                                            const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 3,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: _primary
+                                              .withValues(alpha: 0.15),
+                                          borderRadius:
+                                              BorderRadius.circular(20),
+                                        ),
+                                        child: Text(
+                                          '${chats.length}',
+                                          style: const TextStyle(
+                                            color: _primary,
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      )
+                                    : const SizedBox.shrink(),
+                                orElse: () => const SizedBox.shrink(),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      chatsAsync.when(
+                        loading: () => const SliverFillRemaining(
+                          child: Center(
+                            child: CircularProgressIndicator(
+                                color: _primary),
+                          ),
+                        ),
+                        error: (error, _) => SliverFillRemaining(
+                          child: Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(24),
+                              child: Text(
+                                error.toString(),
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                    color: _textSecondary),
                               ),
                             ),
-                            childCount: chats.length,
                           ),
                         ),
-                      );
-                    },
+                        data: (chats) {
+                          if (chats.isEmpty) {
+                            return SliverFillRemaining(
+                              child: _buildEmptyState(),
+                            );
+                          }
+                          return SliverPadding(
+                            padding: const EdgeInsets.fromLTRB(
+                                16, 0, 16, 100),
+                            sliver: SliverList(
+                              delegate: SliverChildBuilderDelegate(
+                                (context, index) => Padding(
+                                  padding:
+                                      const EdgeInsets.only(bottom: 2),
+                                  child: _buildChatTile(
+                                    context,
+                                    ref,
+                                    chats[index],
+                                    user.uid,
+                                  ),
+                                ),
+                                childCount: chats.length,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
-        ],
-      ),
-      floatingActionButton: _buildFAB(context),
+          floatingActionButton: _buildFAB(context),
+        );
+      },
     );
   }
 
-  // ── AppBar ─────────────────────────────────────────────────
   PreferredSizeWidget _buildAppBar(
     BuildContext context,
     WidgetRef ref,
-    AsyncValue currentUserAsync,
+    String name,
+    String photoUrl,
     String userId,
   ) {
     return AppBar(
@@ -239,7 +254,8 @@ class HomeScreen extends ConsumerWidget {
                       color: _textSecondary, size: 18),
                   SizedBox(width: 10),
                   Text('Profile',
-                      style: TextStyle(color: _textPrimary, fontSize: 14)),
+                      style:
+                          TextStyle(color: _textPrimary, fontSize: 14)),
                 ],
               ),
             ),
@@ -251,7 +267,8 @@ class HomeScreen extends ConsumerWidget {
                       color: _textSecondary, size: 18),
                   SizedBox(width: 10),
                   Text('Settings',
-                      style: TextStyle(color: _textPrimary, fontSize: 14)),
+                      style:
+                          TextStyle(color: _textPrimary, fontSize: 14)),
                 ],
               ),
             ),
@@ -260,11 +277,12 @@ class HomeScreen extends ConsumerWidget {
               value: 'logout',
               child: Row(
                 children: const [
-                  Icon(Icons.logout_rounded, color: Color(0xFFEF4444), size: 18),
+                  Icon(Icons.logout_rounded,
+                      color: Color(0xFFEF4444), size: 18),
                   SizedBox(width: 10),
                   Text('Logout',
-                      style:
-                          TextStyle(color: Color(0xFFEF4444), fontSize: 14)),
+                      style: TextStyle(
+                          color: Color(0xFFEF4444), fontSize: 14)),
                 ],
               ),
             ),
@@ -275,7 +293,6 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  // ── Background Glow ────────────────────────────────────────
   Widget _buildBackground() {
     return Stack(
       children: [
@@ -319,23 +336,12 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  // ── Profile Card ───────────────────────────────────────────
+  // PERMANENT FIX: UserModel directly pass hota hai — no AsyncValue handling needed
   Widget _buildProfileCard(
-    BuildContext context,
-    WidgetRef ref,
-    AsyncValue currentUserAsync,
-    String userId,
-  ) {
-    final name = currentUserAsync.maybeWhen(
-      data: (user) => user?.name ?? userId,
-      orElse: () => '',
-    );
-    final photoUrl = currentUserAsync.maybeWhen(
-      data: (user) => user?.photoUrl ?? '',
-      orElse: () => '',
-    );
-    final isLoading = currentUserAsync.isLoading;
-
+    BuildContext context, {
+    required String name,
+    required String photoUrl,
+  }) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(20),
       child: BackdropFilter(
@@ -351,21 +357,17 @@ class HomeScreen extends ConsumerWidget {
           ),
           child: Row(
             children: [
-              // Avatar
               Stack(
                 children: [
                   CircleAvatar(
                     radius: 28,
                     backgroundColor: _primary.withValues(alpha: 0.2),
-                    backgroundImage:
-                        photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
+                    backgroundImage: photoUrl.isNotEmpty
+                        ? NetworkImage(photoUrl)
+                        : null,
                     child: photoUrl.isEmpty
                         ? Text(
-                            isLoading
-                                ? ''
-                                : name.isEmpty
-                                    ? '?'
-                                    : name[0].toUpperCase(),
+                            name.isEmpty ? '?' : name[0].toUpperCase(),
                             style: const TextStyle(
                               color: _primary,
                               fontSize: 22,
@@ -389,10 +391,7 @@ class HomeScreen extends ConsumerWidget {
                   ),
                 ],
               ),
-
               const SizedBox(width: 14),
-
-              // Name + status
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -406,26 +405,18 @@ class HomeScreen extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(height: 3),
-                    isLoading
-                        ? Container(
-                            height: 18,
-                            width: 120,
-                            decoration: BoxDecoration(
-                              color: _border,
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                          )
-                        : Text(
-                            name.isEmpty ? userId : name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: _textPrimary,
-                              fontSize: 17,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: -0.2,
-                            ),
-                          ),
+                    // Guaranteed non-null — no loading shimmer needed
+                    Text(
+                      name.isEmpty ? '?' : name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: _textPrimary,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
                     const SizedBox(height: 5),
                     Row(
                       children: [
@@ -451,8 +442,6 @@ class HomeScreen extends ConsumerWidget {
                   ],
                 ),
               ),
-
-              // New chat button
               GestureDetector(
                 onTap: () => context.push(AppRouter.searchUsers),
                 child: Container(
@@ -487,7 +476,6 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  // ── Chat Tile ──────────────────────────────────────────────
   Widget _buildChatTile(
     BuildContext context,
     WidgetRef ref,
@@ -540,21 +528,23 @@ class HomeScreen extends ConsumerWidget {
                       horizontal: 14, vertical: 12),
                   child: Row(
                     children: [
-                      // Avatar
                       Stack(
                         clipBehavior: Clip.none,
                         children: [
                           CircleAvatar(
                             radius: 26,
-                            backgroundColor: _primary.withValues(alpha: 0.15),
-                            backgroundImage: chat.otherUserPhoto.isNotEmpty
-                                ? NetworkImage(chat.otherUserPhoto)
-                                : null,
+                            backgroundColor:
+                                _primary.withValues(alpha: 0.15),
+                            backgroundImage:
+                                chat.otherUserPhoto.isNotEmpty
+                                    ? NetworkImage(chat.otherUserPhoto)
+                                    : null,
                             child: chat.otherUserPhoto.isEmpty
                                 ? Text(
                                     chat.otherUserName.isEmpty
                                         ? '?'
-                                        : chat.otherUserName[0].toUpperCase(),
+                                        : chat.otherUserName[0]
+                                            .toUpperCase(),
                                     style: const TextStyle(
                                       color: _primary,
                                       fontWeight: FontWeight.w700,
@@ -573,17 +563,14 @@ class HomeScreen extends ConsumerWidget {
                                 decoration: BoxDecoration(
                                   color: _online,
                                   shape: BoxShape.circle,
-                                  border:
-                                      Border.all(color: _surface2, width: 2),
+                                  border: Border.all(
+                                      color: _surface2, width: 2),
                                 ),
                               ),
                             ),
                         ],
                       ),
-
                       const SizedBox(width: 13),
-
-                      // Name + last message
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -633,16 +620,14 @@ class HomeScreen extends ConsumerWidget {
                           ],
                         ),
                       ),
-
                       const SizedBox(width: 8),
-
-                      // Time + unread dot
                       Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Text(
-                            AppFormatters.chatListTime(chat.lastMessageTime),
+                            AppFormatters.chatListTime(
+                                chat.lastMessageTime),
                             style: TextStyle(
                               fontSize: 11,
                               color: chat.lastMessageSeen
@@ -678,7 +663,6 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  // ── Empty State ────────────────────────────────────────────
   Widget _buildEmptyState() {
     return Center(
       child: Column(
@@ -724,7 +708,6 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  // ── FAB ────────────────────────────────────────────────────
   Widget _buildFAB(BuildContext context) {
     return Container(
       decoration: BoxDecoration(

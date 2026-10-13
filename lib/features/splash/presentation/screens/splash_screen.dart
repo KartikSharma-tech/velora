@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../app/router/app_router.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/app_spacing.dart';
@@ -23,11 +22,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   }
 
   Future<void> _initialize() async {
-    // Minimum splash display time
     await Future.delayed(const Duration(seconds: 2));
     if (!mounted) return;
 
-    // Firebase Auth genuinely ready hone tak wait karo
     final user = await FirebaseAuth.instance.authStateChanges().first;
     if (!mounted) return;
 
@@ -36,7 +33,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       return;
     }
 
-    // Force token refresh
     try {
       await user.reload();
       await user.getIdToken(true);
@@ -53,19 +49,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       return;
     }
 
-    // Firestore gRPC channel ko fresh token ke saath prime karo.
-    // Ye dummy read force karti hai ki Firestore ka internal connection
-    // authenticate ho jaye — tab tak home screen load nahi hoga.
-    // Iske bina HomeScreen pe chatTilesProvider PERMISSION_DENIED deta hai.
-    try {
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(freshUser.uid)
-          .get();
-    } catch (_) {}
-
-    if (!mounted) return;
-
+    // Dummy Firestore read REMOVE kar diya — appUserProvider handle karega.
+    // Race condition permanently fix ho gayi.
     context.go(AppRouter.home);
   }
 
@@ -104,9 +89,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                     ),
                   ),
                 ),
-
                 AppSpacing.gapXXXL,
-
                 Text(
                   "Velora",
                   style: AppTypography.displaySmall.copyWith(
@@ -115,9 +98,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                     letterSpacing: 1,
                   ),
                 ),
-
                 AppSpacing.gapSM,
-
                 Text(
                   "Luxury Messaging Experience",
                   textAlign: TextAlign.center,
@@ -125,9 +106,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                     color: AppColors.textSecondary,
                   ),
                 ),
-
                 const SizedBox(height: 55),
-
                 const SizedBox(
                   width: 26,
                   height: 26,

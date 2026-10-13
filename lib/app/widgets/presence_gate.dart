@@ -3,10 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../features/auth/presentation/providers/auth_provider.dart';
 import '../../../features/user/presentation/providers/user_provider.dart';
+import '../../../features/user/data/models/user_model.dart';
 
-/// PresenceGate — user ke online/offline status ko track karta hai.
-/// currentUserIdProvider ab StreamProvider hai, isliye ref.listen ka
-/// type AsyncValue<String?> hona chahiye aur .valueOrNull se value nikalte hain.
 class PresenceGate extends ConsumerStatefulWidget {
   const PresenceGate({super.key, required this.child});
 
@@ -52,26 +50,22 @@ class _PresenceGateState extends ConsumerState<PresenceGate>
 
   @override
   Widget build(BuildContext context) {
-    // FIX: currentUserIdProvider ab StreamProvider<String?> hai
-    // Type AsyncValue<String?> hona chahiye, .valueOrNull se value nikalo
-    ref.listen<AsyncValue<String?>>(
-      currentUserIdProvider,
+    // PERMANENT FIX: appUserProvider — UserModel directly, no raw UID
+    ref.listen<AsyncValue<UserModel?>>(
+      appUserProvider,
       (previous, next) {
-        final prevVal = previous?.valueOrNull;
-        final nextVal = next.valueOrNull;
+        final prevUser = previous?.valueOrNull;
+        final nextUser = next.valueOrNull;
 
-        // Koi change nahi — early return
-        if (prevVal == nextVal) return;
+        if (prevUser?.uid == nextUser?.uid) return;
 
-        // User login hua
-        if (nextVal != null) {
-          _currentUid = nextVal;
-          _setOnline(nextVal, true);
+        if (nextUser != null) {
+          _currentUid = nextUser.uid;
+          _setOnline(nextUser.uid, true);
         }
 
-        // User logout hua
-        if (nextVal == null && prevVal != null) {
-          _setOnline(prevVal, false);
+        if (nextUser == null && prevUser != null) {
+          _setOnline(prevUser.uid, false);
           _currentUid = null;
         }
       },

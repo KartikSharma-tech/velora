@@ -15,11 +15,8 @@ class SearchUsersScreen extends ConsumerStatefulWidget {
       _SearchUsersScreenState();
 }
 
-class _SearchUsersScreenState
-    extends ConsumerState<SearchUsersScreen> {
-  final TextEditingController _searchController =
-      TextEditingController();
-
+class _SearchUsersScreenState extends ConsumerState<SearchUsersScreen> {
+  final TextEditingController _searchController = TextEditingController();
   String _query = '';
 
   @override
@@ -30,107 +27,107 @@ class _SearchUsersScreenState
 
   @override
   Widget build(BuildContext context) {
-    final usersAsync = ref.watch(allUsersProvider);
-    final currentUserId = ref.watch(currentUserIdProvider);
+    // PERMANENT FIX: appUserProvider
+    final userAsync = ref.watch(appUserProvider);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('New Chat'),
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: TextField(
-              controller: _searchController,
-              decoration: const InputDecoration(
-                hintText: 'Search users...',
-                prefixIcon: Icon(Icons.search),
+    return userAsync.when(
+      loading: () =>
+          const Scaffold(body: Center(child: CircularProgressIndicator())),
+      error: (e, _) => Scaffold(body: Center(child: Text(e.toString()))),
+      data: (currentUser) {
+        if (currentUser == null) {
+          return const Scaffold(
+              body: Center(child: CircularProgressIndicator()));
+        }
+
+        final usersAsync = ref.watch(allUsersProvider);
+
+        return Scaffold(
+          appBar: AppBar(title: const Text('New Chat')),
+          body: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: TextField(
+                  controller: _searchController,
+                  decoration: const InputDecoration(
+                    hintText: 'Search users...',
+                    prefixIcon: Icon(Icons.search),
+                  ),
+                  onChanged: (value) {
+                    setState(() {
+                      _query = value.toLowerCase();
+                    });
+                  },
+                ),
               ),
-              onChanged: (value) {
-                setState(() {
-                  _query = value.toLowerCase();
-                });
-              },
-            ),
-          ),
-          Expanded(
-            child: usersAsync.when(
-              data: (users) {
-                final filtered = users.where((user) {
-                  if (user.uid == currentUserId) {
-                    return false;
-                  }
+              Expanded(
+                child: usersAsync.when(
+                  data: (users) {
+                    final filtered = users.where((user) {
+                      if (user.uid == currentUser.uid) return false;
+                      return user.name.toLowerCase().contains(_query) ||
+                          user.email.toLowerCase().contains(_query);
+                    }).toList();
 
-                  return user.name
-                          .toLowerCase()
-                          .contains(_query) ||
-                      user.email
-                          .toLowerCase()
-                          .contains(_query);
-                }).toList();
+                    if (filtered.isEmpty) {
+                      return const Center(child: Text('No users found'));
+                    }
 
-                if (filtered.isEmpty) {
-                  return const Center(
-                    child: Text('No users found'),
-                  );
-                }
+                    return ListView.builder(
+                      itemCount: filtered.length,
+                      itemBuilder: (context, index) {
+                        final user = filtered[index];
+                        return ListTile(
+                          leading: CircleAvatar(
+                            child: Text(
+                              user.name.isEmpty
+                                  ? '?'
+                                  : user.name[0].toUpperCase(),
+                            ),
+                          ),
+                          title: Text(user.name),
+                          subtitle: Text(user.email),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.chat_bubble),
+                            onPressed: () async {
+                              final roomId = await ref
+                                  .read(chatRepositoryProvider)
+                                  .createChatRoom(
+                                    participants: [
+                                      currentUser.uid,
+                                      user.uid,
+                                    ],
+                                  );
 
-                return ListView.builder(
-                  itemCount: filtered.length,
-                  itemBuilder: (context, index) {
-                    final user = filtered[index];
+                              if (!context.mounted) return;
 
-                    return ListTile(
-                      leading: CircleAvatar(
-                        child: Text(
-                          user.name.isEmpty
-                              ? '?'
-                              : user.name[0].toUpperCase(),
-                        ),
-                      ),
-                      title: Text(user.name),
-                      subtitle: Text(user.email),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.chat_bubble),
-                        onPressed: () async {
-                          if (currentUserId == null) return;
-
-                          final roomId = await ref
-                              .read(chatRepositoryProvider)
-                              .createChatRoom(
-                                participants: [
-                                  currentUserId,
-                                  user.uid,
-                                ],
+                              context.push(
+                                AppRouter.chat,
+                                extra: {
+                                  'roomId': roomId,
+                                  'receiverId': user.uid,
+                                  'receiverName': user.name,
+                                },
                               );
-
-                          if (!context.mounted) return;
-
-                          context.push(
-                            AppRouter.chat,
-                            extra: {
-                              'roomId': roomId,
-                              'receiverId': user.uid,
-                              'receiverName': user.name,
                             },
-                          );
-                        },
-                      ),
+                          ),
+                        );
+                      },
                     );
                   },
-                );
-              },
-              loading: () => const Center(
-                child: CircularProgressIndicator(),
+                  loading: () => const Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                  error: (error, stackTrace) => Center(
+                    child: Text(error.toString()),
+                  ),
+                ),
               ),
-              error: (error, stackTrace) => Center(
-                child: Text(error.toString()),
-              ),
-            ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

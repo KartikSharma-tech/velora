@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 import '../../../../app/router/app_router.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
@@ -14,8 +16,7 @@ import '../../../user/presentation/providers/user_provider.dart';
 import '../../domain/entities/velora_contact.dart';
 import '../providers/contacts_provider.dart';
 import '../widgets/send_request_sheet.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-  //  import 'dart:async';
+
 class DiscoverScreen extends ConsumerStatefulWidget {
   const DiscoverScreen({super.key});
 
@@ -35,9 +36,8 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
   }
 
   Future<void> _requestPermission() async {
-    final granted = await ref
-        .read(contactRepositoryProvider)
-        .requestPermission();
+    final granted =
+        await ref.read(contactRepositoryProvider).requestPermission();
 
     if (granted) {
       ref.invalidate(contactSyncProvider(true));
@@ -54,205 +54,215 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
   }
 
   Future<void> _openUser(UserModel target) async {
-  final currentUserId = ref.read(currentUserIdProvider);
-  if (currentUserId == null) return;
+    // PERMANENT FIX: appUserProvider — read at action time
+    final currentUser = ref.read(appUserProvider).valueOrNull;
+    if (currentUser == null) return;
 
-  setState(() => _busy = true);
+    setState(() => _busy = true);
 
-  try {
-    final permission = await MessagingPermissionResolver.resolve(
-      ref: ref,
-      currentUserId: currentUserId,
-      target: target,
-    );
-
-    if (!mounted) return;
-    // setState(() => _busy = false);
-
-    switch (permission) {
-      case MessagingPermission.allowed:
-  final roomId = await ref
-      .read(chatRepositoryProvider)
-      .createChatRoom(participants: [currentUserId, target.uid]);
-  if (!mounted) return;
-  setState(() => _busy = false);  
-  context.push(
-    AppRouter.chat,
-    extra: {
-      'roomId': roomId,
-      'receiverId': target.uid,
-      'receiverName': target.name,
-    },
-  );
-  break;
-      case MessagingPermission.requestRequired:
-        setState(() => _busy = false);  
-
-        if (!mounted) return;
-        showModalBottomSheet(
-          context: context,
-          isScrollControlled: true,
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          builder: (_) => SendRequestSheet(target: target),
-        );
-        break;
-
-      case MessagingPermission.blocked:
-        setState(() => _busy = false);  
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              "${target.name} isn't accepting new messages right now.",
-            ),
-          ),
-        );
-        break;
-    }
-  } catch (e) {
-    if (mounted) {
-      setState(() => _busy = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${e.toString()}')),
+    try {
+      final permission = await MessagingPermissionResolver.resolve(
+        ref: ref,
+        currentUserId: currentUser.uid,
+        target: target,
       );
+
+      if (!mounted) return;
+
+      switch (permission) {
+        case MessagingPermission.allowed:
+          final roomId = await ref
+              .read(chatRepositoryProvider)
+              .createChatRoom(
+                  participants: [currentUser.uid, target.uid]);
+          if (!mounted) return;
+          setState(() => _busy = false);
+          context.push(
+            AppRouter.chat,
+            extra: {
+              'roomId': roomId,
+              'receiverId': target.uid,
+              'receiverName': target.name,
+            },
+          );
+          break;
+        case MessagingPermission.requestRequired:
+          setState(() => _busy = false);
+          if (!mounted) return;
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            shape: const RoundedRectangleBorder(
+              borderRadius:
+                  BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            builder: (_) => SendRequestSheet(target: target),
+          );
+          break;
+        case MessagingPermission.blocked:
+          setState(() => _busy = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                  "${target.name} isn't accepting new messages right now."),
+            ),
+          );
+          break;
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _busy = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.toString()}')),
+        );
+      }
     }
   }
-}
-  
+
   Future<void> _openVeloraContact(VeloraContact contact) async {
-  if (contact.uid == null) return;
+    if (contact.uid == null) return;
 
-  setState(() => _busy = true);
+    setState(() => _busy = true);
 
-  try {
-    final userDoc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(contact.uid!)
-        .get();
+    try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(contact.uid!)
+          .get();
 
-    if (!userDoc.exists || !mounted) {
+      if (!userDoc.exists || !mounted) {
+        setState(() => _busy = false);
+        return;
+      }
+
+      final user = UserModel.fromMap(userDoc.data()!);
       setState(() => _busy = false);
-      return;
+      await _openUser(user);
+    } catch (e) {
+      if (mounted) setState(() => _busy = false);
     }
-
-    final user = UserModel.fromMap(userDoc.data()!);
-    setState(() => _busy = false);
-    await _openUser(user);
-  } catch (e) {
-    if (mounted) setState(() => _busy = false);
   }
-}
 
   @override
   Widget build(BuildContext context) {
-    final currentUserId = ref.watch(currentUserIdProvider);
+    // PERMANENT FIX: appUserProvider
+    final userAsync = ref.watch(appUserProvider);
 
-    if (currentUserId == null) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
+    return userAsync.when(
+      loading: () =>
+          const Scaffold(body: Center(child: CircularProgressIndicator())),
+      error: (e, _) => Scaffold(body: Center(child: Text(e.toString()))),
+      data: (user) {
+        if (user == null) {
+          return const Scaffold(
+              body: Center(child: CircularProgressIndicator()));
+        }
 
-    final incomingRequestsAsync = ref.watch(
-      incomingChatRequestsProvider(currentUserId),
-    );
-    final incomingCount = incomingRequestsAsync.maybeWhen(
-      data: (requests) => requests.length,
-      orElse: () => 0,
-    );
+        final incomingRequestsAsync =
+            ref.watch(incomingChatRequestsProvider(user.uid));
+        final incomingCount = incomingRequestsAsync.maybeWhen(
+          data: (requests) => requests.length,
+          orElse: () => 0,
+        );
 
-    return PopScope(
-      canPop: context.canPop(),
-      onPopInvokedWithResult: (didPop, _) {
-        if (didPop) return;
-        context.go(AppRouter.home);
-      },
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('New Chat'),
-          leading: IconButton(
-            tooltip: 'Back',
-            icon: const Icon(Icons.arrow_back_rounded),
-            onPressed: () => AppRouter.backOrHome(context),
-          ),
-          actions: [
-            Stack(
-              alignment: Alignment.center,
-              children: [
-                IconButton(
-                  tooltip: 'Chat requests',
-                  icon: const Icon(Icons.mark_email_unread_outlined),
-                  onPressed: () => context.push(AppRouter.chatRequests),
-                ),
-                if (incomingCount > 0)
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 5,
-                        vertical: 1,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.error,
-                        borderRadius: BorderRadius.circular(100),
-                      ),
-                      child: Text(
-                        '$incomingCount',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ],
-        ),
-        body: Stack(
-          children: [
-            Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: TextField(
-                    controller: _searchController,
-                    decoration: InputDecoration(
-                      hintText: 'Search by username...',
-                      prefixIcon: const Icon(Icons.alternate_email_rounded),
-                      suffixIcon: _query.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.close_rounded),
-                              onPressed: () {
-                                _searchController.clear();
-                                setState(() => _query = '');
-                              },
-                            )
-                          : null,
-                    ),
-                    onChanged: (value) => setState(() => _query = value.trim()),
-                  ),
-                ),
-                Expanded(
-                  child: _query.isNotEmpty
-                      ? _UsernameResults(query: _query, onTap: _openUser)
-                      : _ContactsList(
-                          onRequestPermission: _requestPermission,
-                          onTap: _openVeloraContact,
-                        ),
-                ),
-              ],
-            ),
-            if (_busy)
-              Container(
-                color: Colors.black26,
-                child: const Center(child: CircularProgressIndicator()),
+        return PopScope(
+          canPop: context.canPop(),
+          onPopInvokedWithResult: (didPop, _) {
+            if (didPop) return;
+            context.go(AppRouter.home);
+          },
+          child: Scaffold(
+            appBar: AppBar(
+              title: const Text('New Chat'),
+              leading: IconButton(
+                tooltip: 'Back',
+                icon: const Icon(Icons.arrow_back_rounded),
+                onPressed: () => AppRouter.backOrHome(context),
               ),
-          ],
-        ),
-      ),
+              actions: [
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    IconButton(
+                      tooltip: 'Chat requests',
+                      icon:
+                          const Icon(Icons.mark_email_unread_outlined),
+                      onPressed: () =>
+                          context.push(AppRouter.chatRequests),
+                    ),
+                    if (incomingCount > 0)
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 5, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: AppColors.error,
+                            borderRadius: BorderRadius.circular(100),
+                          ),
+                          child: Text(
+                            '$incomingCount',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+            body: Stack(
+              children: [
+                Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: TextField(
+                        controller: _searchController,
+                        decoration: InputDecoration(
+                          hintText: 'Search by username...',
+                          prefixIcon: const Icon(
+                              Icons.alternate_email_rounded),
+                          suffixIcon: _query.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.close_rounded),
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    setState(() => _query = '');
+                                  },
+                                )
+                              : null,
+                        ),
+                        onChanged: (value) =>
+                            setState(() => _query = value.trim()),
+                      ),
+                    ),
+                    Expanded(
+                      child: _query.isNotEmpty
+                          ? _UsernameResults(
+                              query: _query, onTap: _openUser)
+                          : _ContactsList(
+                              onRequestPermission: _requestPermission,
+                              onTap: _openVeloraContact,
+                            ),
+                    ),
+                  ],
+                ),
+                if (_busy)
+                  Container(
+                    color: Colors.black26,
+                    child: const Center(
+                        child: CircularProgressIndicator()),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -287,7 +297,9 @@ class _UsernameResults extends ConsumerWidget {
                     ? NetworkImage(user.photoUrl)
                     : null,
                 child: user.photoUrl.isEmpty
-                    ? Text(user.name.isEmpty ? '?' : user.name[0].toUpperCase())
+                    ? Text(user.name.isEmpty
+                        ? '?'
+                        : user.name[0].toUpperCase())
                     : null,
               ),
               title: Text(user.name),
@@ -304,7 +316,8 @@ class _UsernameResults extends ConsumerWidget {
 
 // ── Contacts List ────────────────────────────────────────────────────
 class _ContactsList extends ConsumerWidget {
-  const _ContactsList({required this.onRequestPermission, required this.onTap});
+  const _ContactsList(
+      {required this.onRequestPermission, required this.onTap});
 
   final VoidCallback onRequestPermission;
   final ValueChanged<VeloraContact> onTap;
@@ -323,7 +336,8 @@ class _ContactsList extends ConsumerWidget {
       ),
       data: (hasPermission) {
         if (!hasPermission) {
-          return _PermissionBanner(onRequestPermission: onRequestPermission);
+          return _PermissionBanner(
+              onRequestPermission: onRequestPermission);
         }
 
         final syncAsync = ref.watch(contactSyncProvider(false));
@@ -333,7 +347,8 @@ class _ContactsList extends ConsumerWidget {
           error: (error, _) => Center(
             child: Padding(
               padding: const EdgeInsets.all(24),
-              child: Text(error.toString(), textAlign: TextAlign.center),
+              child:
+                  Text(error.toString(), textAlign: TextAlign.center),
             ),
           ),
           data: (result) {
@@ -347,11 +362,8 @@ class _ContactsList extends ConsumerWidget {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        Icons.contacts_outlined,
-                        size: 56,
-                        color: AppColors.textHint,
-                      ),
+                      Icon(Icons.contacts_outlined,
+                          size: 56, color: AppColors.textHint),
                       const SizedBox(height: 12),
                       const Text(
                         "None of your contacts are on Velora yet",
@@ -371,10 +383,10 @@ class _ContactsList extends ConsumerWidget {
             }
 
             return RefreshIndicator(
-              onRefresh: () async => ref.invalidate(contactSyncProvider(true)),
+              onRefresh: () async =>
+                  ref.invalidate(contactSyncProvider(true)),
               child: CustomScrollView(
                 slivers: [
-                  // On Velora section
                   if (onVelora.isNotEmpty) ...[
                     const SliverToBoxAdapter(
                       child: Padding(
@@ -391,40 +403,43 @@ class _ContactsList extends ConsumerWidget {
                       ),
                     ),
                     SliverList(
-                      delegate: SliverChildBuilderDelegate((context, index) {
-                        final contact = onVelora[index];
-                        return ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: AppColors.avatarBackground,
-                            backgroundImage:
-                                contact.photoUrl?.isNotEmpty == true
-                                ? NetworkImage(contact.photoUrl!)
-                                : null,
-                            child: contact.photoUrl?.isNotEmpty != true
-                                ? Text(
-                                    contact.displayName.isEmpty
-                                        ? '?'
-                                        : contact.displayName[0].toUpperCase(),
-                                  )
-                                : null,
-                          ),
-                          title: Text(contact.displayName),
-                          subtitle: Text(
-                            contact.veloraName != null &&
-                                    contact.veloraName != contact.displayName
-                                ? 'Velora: ${contact.veloraName}'
-                                : 'On Velora',
-                          ),
-                          trailing: const Icon(
-                            Icons.chat_bubble_outline_rounded,
-                          ),
-                          onTap: () => onTap(contact),
-                        );
-                      }, childCount: onVelora.length),
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          final contact = onVelora[index];
+                          return ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: AppColors.avatarBackground,
+                              backgroundImage:
+                                  contact.photoUrl?.isNotEmpty == true
+                                      ? NetworkImage(contact.photoUrl!)
+                                      : null,
+                              child:
+                                  contact.photoUrl?.isNotEmpty != true
+                                      ? Text(
+                                          contact.displayName.isEmpty
+                                              ? '?'
+                                              : contact.displayName[0]
+                                                  .toUpperCase(),
+                                        )
+                                      : null,
+                            ),
+                            title: Text(contact.displayName),
+                            subtitle: Text(
+                              contact.veloraName != null &&
+                                      contact.veloraName !=
+                                          contact.displayName
+                                  ? 'Velora: ${contact.veloraName}'
+                                  : 'On Velora',
+                            ),
+                            trailing: const Icon(
+                                Icons.chat_bubble_outline_rounded),
+                            onTap: () => onTap(contact),
+                          );
+                        },
+                        childCount: onVelora.length,
+                      ),
                     ),
                   ],
-
-                  // Invite section
                   if (notOnVelora.isNotEmpty) ...[
                     const SliverToBoxAdapter(
                       child: Padding(
@@ -441,33 +456,36 @@ class _ContactsList extends ConsumerWidget {
                       ),
                     ),
                     SliverList(
-                      delegate: SliverChildBuilderDelegate((context, index) {
-                        final contact = notOnVelora[index];
-                        return ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: AppColors.avatarBackground,
-                            child: Text(
-                              contact.displayName.isEmpty
-                                  ? '?'
-                                  : contact.displayName[0].toUpperCase(),
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          final contact = notOnVelora[index];
+                          return ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: AppColors.avatarBackground,
+                              child: Text(
+                                contact.displayName.isEmpty
+                                    ? '?'
+                                    : contact.displayName[0].toUpperCase(),
+                              ),
                             ),
-                          ),
-                          title: Text(contact.displayName),
-                          subtitle: Text(contact.phone),
-                          trailing: TextButton(
-                            onPressed: () async {
-                              await SharePlus.instance.share(
-                                ShareParams(
-                                  text:
-                                      'Hey! Join me on Velora — a fast, private chat app.\n\nDownload it here:\nhttps://play.google.com/store/apps/details?id=com.velora.app',
-                                  subject: 'Join me on Velora!',
-                                ),
-                              );
-                            },
-                            child: const Text('Invite'),
-                          ),
-                        );
-                      }, childCount: notOnVelora.length),
+                            title: Text(contact.displayName),
+                            subtitle: Text(contact.phone),
+                            trailing: TextButton(
+                              onPressed: () async {
+                                await SharePlus.instance.share(
+                                  ShareParams(
+                                    text:
+                                        'Hey! Join me on Velora — a fast, private chat app.\n\nDownload it here:\nhttps://play.google.com/store/apps/details?id=com.velora.app',
+                                    subject: 'Join me on Velora!',
+                                  ),
+                                );
+                              },
+                              child: const Text('Invite'),
+                            ),
+                          );
+                        },
+                        childCount: notOnVelora.length,
+                      ),
                     ),
                   ],
                 ],
@@ -494,7 +512,8 @@ class _PermissionBanner extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.contacts_rounded, size: 64, color: AppColors.primary),
+            Icon(Icons.contacts_rounded,
+                size: 64, color: AppColors.primary),
             const SizedBox(height: 16),
             const Text(
               'Find people you know',

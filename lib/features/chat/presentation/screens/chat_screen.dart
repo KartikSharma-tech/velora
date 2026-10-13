@@ -56,46 +56,36 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _searchController.dispose();
     _scrollController.dispose();
     _typingTimer?.cancel();
-    // _setTyping(false);
     super.dispose();
   }
-
-  // ============================================================
-  // Typing indicator
-  // ============================================================
 
   void _onTextChanged(String value) {
     final hasText = value.trim().isNotEmpty;
     if (hasText != _hasText) setState(() => _hasText = hasText);
-
     if (!_iAmTyping) _setTyping(true);
-
     _typingTimer?.cancel();
-    _typingTimer = Timer(const Duration(seconds: 2), () => _setTyping(false));
+    _typingTimer =
+        Timer(const Duration(seconds: 2), () => _setTyping(false));
   }
 
   void _setTyping(bool isTyping) {
-    // FIX: StreamProvider hai to .valueOrNull use karo
-    final userId = ref.read(currentUserIdProvider).valueOrNull;
-    if (userId == null || _iAmTyping == isTyping) return;
+    // PERMANENT FIX: appUserProvider se uid lo
+    final uid = ref.read(appUserProvider).valueOrNull?.uid;
+    if (uid == null || _iAmTyping == isTyping) return;
     _iAmTyping = isTyping;
     ref.read(chatRepositoryProvider).setTyping(
           roomId: widget.roomId,
-          userId: userId,
+          userId: uid,
           isTyping: isTyping,
         );
   }
-
-  // ============================================================
-  // Send
-  // ============================================================
 
   Future<void> _sendMessage() async {
     final text = _messageController.text.trim();
     if (text.isEmpty) return;
 
-    // FIX: StreamProvider hai to .valueOrNull use karo
-    final senderId = ref.read(currentUserIdProvider).valueOrNull;
+    // PERMANENT FIX: appUserProvider se uid lo
+    final senderId = ref.read(appUserProvider).valueOrNull?.uid;
     if (senderId == null) return;
 
     final replyTo = _replyingTo;
@@ -138,13 +128,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
-  // ============================================================
-  // Image
-  // ============================================================
-
   Future<void> _pickAndSendImage() async {
-    // FIX: StreamProvider hai to .valueOrNull use karo
-    final senderId = ref.read(currentUserIdProvider).valueOrNull;
+    // PERMANENT FIX: appUserProvider se uid lo
+    final senderId = ref.read(appUserProvider).valueOrNull?.uid;
     if (senderId == null) return;
 
     List<XFile> picked;
@@ -196,7 +182,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       } catch (error, stackTrace) {
         failures++;
         lastError = error;
-        debugPrint('Image send failed for $messageId: $error\n$stackTrace');
+        debugPrint(
+            'Image send failed for $messageId: $error\n$stackTrace');
       }
     }
 
@@ -219,21 +206,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       } else if (failures > 0) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content:
-                  Text('$failures of ${picked.length} images failed to send')),
+              content: Text(
+                  '$failures of ${picked.length} images failed to send')),
         );
       }
       setState(() => _isUploadingImage = false);
     }
   }
 
-  // ============================================================
-  // Message actions (long press)
-  // ============================================================
-
   void _openMessageActions(MessageModel message, bool isMe) {
-    // FIX: StreamProvider hai to .valueOrNull use karo
-    final currentUserId = ref.read(currentUserIdProvider).valueOrNull;
+    // PERMANENT FIX: appUserProvider se uid lo
+    final currentUserId = ref.read(appUserProvider).valueOrNull?.uid;
     if (currentUserId == null) return;
 
     showModalBottomSheet(
@@ -255,7 +238,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   return GestureDetector(
                     onTap: () {
                       Navigator.pop(context);
-                      ref.read(chatRepositoryProvider).toggleReaction(
+                      ref
+                          .read(chatRepositoryProvider)
+                          .toggleReaction(
                             roomId: widget.roomId,
                             messageId: message.id,
                             userId: currentUserId,
@@ -272,8 +257,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                             : Colors.transparent,
                         shape: BoxShape.circle,
                       ),
-                      child:
-                          Text(emoji, style: const TextStyle(fontSize: 24)),
+                      child: Text(emoji,
+                          style: const TextStyle(fontSize: 24)),
                     ),
                   );
                 }).toList(),
@@ -286,9 +271,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   Navigator.pop(context);
                   setState(() {
                     _replyingTo = message.copyWith(
-                      replyToSenderName: message.senderId == currentUserId
-                          ? 'You'
-                          : widget.receiverName,
+                      replyToSenderName:
+                          message.senderId == currentUserId
+                              ? 'You'
+                              : widget.receiverName,
                     );
                   });
                 },
@@ -299,9 +285,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   title: const Text('Copy'),
                   onTap: () {
                     Navigator.pop(context);
-                    Clipboard.setData(ClipboardData(text: message.text));
+                    Clipboard.setData(
+                        ClipboardData(text: message.text));
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Copied to clipboard')),
+                      const SnackBar(
+                          content: Text('Copied to clipboard')),
                     );
                   },
                 ),
@@ -314,7 +302,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 ),
                 onTap: () {
                   Navigator.pop(context);
-                  ref.read(chatRepositoryProvider).deleteMessageForMe(
+                  ref
+                      .read(chatRepositoryProvider)
+                      .deleteMessageForMe(
                         roomId: widget.roomId,
                         messageId: message.id,
                         userId: currentUserId,
@@ -347,13 +337,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
   }
 
-  // ============================================================
-  // Block / Unblock
-  // ============================================================
-
   Future<void> _toggleBlock(bool currentlyBlocked) async {
-    // FIX: StreamProvider hai to .valueOrNull use karo
-    final myId = ref.read(currentUserIdProvider).valueOrNull;
+    // PERMANENT FIX: appUserProvider se uid lo
+    final myId = ref.read(appUserProvider).valueOrNull?.uid;
     if (myId == null) return;
 
     final repo = ref.read(userRepositoryProvider);
@@ -388,23 +374,28 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // PERMANENT FIX: appUserProvider — build mein bhi yahi use karo
+    final userAsync = ref.watch(appUserProvider);
+    final currentUser = userAsync.valueOrNull;
+    final currentUserId = currentUser?.uid;
+
     final messagesAsync = ref.watch(messagesProvider(widget.roomId));
-    // FIX: StreamProvider hai to .valueOrNull use karo
-    final currentUserId = ref.watch(currentUserIdProvider).valueOrNull;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final myUserAsync = currentUserId == null
+    final myUserAsync = currentUser == null
         ? const AsyncValue<dynamic>.data(null)
-        : ref.watch(currentUserProvider(currentUserId));
+        : ref.watch(currentUserProvider(currentUserId!));
     final receiverUserAsync =
         ref.watch(currentUserProvider(widget.receiverId));
 
     final iHaveBlockedThem = myUserAsync.maybeWhen(
-      data: (user) => user?.blockedUsers.contains(widget.receiverId) ?? false,
+      data: (user) =>
+          user?.blockedUsers.contains(widget.receiverId) ?? false,
       orElse: () => false,
     );
     final theyHaveBlockedMe = receiverUserAsync.maybeWhen(
-      data: (user) => user?.blockedUsers.contains(currentUserId) ?? false,
+      data: (user) =>
+          user?.blockedUsers.contains(currentUserId) ?? false,
       orElse: () => false,
     );
 
@@ -494,7 +485,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                                 ? Icons.search_off_rounded
                                 : Icons.chat_bubble_outline_rounded,
                             size: 56,
-                            color: AppColors.primary.withValues(alpha: .5),
+                            color: AppColors.primary
+                                .withValues(alpha: .5),
                           ),
                           const SizedBox(height: 12),
                           Text(
@@ -524,9 +516,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 child: ListView.builder(
                   controller: _scrollController,
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 12,
-                  ),
+                      horizontal: 12, vertical: 12),
                   itemCount: visibleMessages.length,
                   itemBuilder: (context, index) {
                     final message = visibleMessages[index];
@@ -550,7 +540,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                           highlighted: _searchQuery.isNotEmpty,
                           onLongPress: message.isDeletedForEveryone
                               ? null
-                              : () => _openMessageActions(message, isMe),
+                              : () =>
+                                  _openMessageActions(message, isMe),
                         ),
                       ],
                     );
@@ -561,7 +552,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             ],
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () =>
+            const Center(child: CircularProgressIndicator()),
         error: (error, stackTrace) => Center(
           child: Padding(
             padding: const EdgeInsets.all(20),

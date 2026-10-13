@@ -14,7 +14,8 @@ class ChatRequestsScreen extends ConsumerStatefulWidget {
   const ChatRequestsScreen({super.key});
 
   @override
-  ConsumerState<ChatRequestsScreen> createState() => _ChatRequestsScreenState();
+  ConsumerState<ChatRequestsScreen> createState() =>
+      _ChatRequestsScreenState();
 }
 
 class _ChatRequestsScreenState extends ConsumerState<ChatRequestsScreen>
@@ -36,18 +37,15 @@ class _ChatRequestsScreenState extends ConsumerState<ChatRequestsScreen>
         .respondToRequest(requestId: request.id, accept: accept);
 
     if (accept) {
-      await ref
-          .read(chatRepositoryProvider)
-          .createChatRoom(participants: [request.fromUserId, request.toUserId]);
+      await ref.read(chatRepositoryProvider).createChatRoom(
+          participants: [request.fromUserId, request.toUserId]);
 
       if (mounted) {
         context.push(
           AppRouter.chat,
           extra: {
-            'roomId': ([
-              request.fromUserId,
-              request.toUserId,
-            ]..sort()).join('_'),
+            'roomId': ([request.fromUserId, request.toUserId]..sort())
+                .join('_'),
             'receiverId': request.fromUserId,
             'receiverName': request.fromUserName,
           },
@@ -58,50 +56,57 @@ class _ChatRequestsScreenState extends ConsumerState<ChatRequestsScreen>
 
   @override
   Widget build(BuildContext context) {
-    final currentUserId = ref.watch(currentUserIdProvider);
+    // PERMANENT FIX: appUserProvider — guaranteed UserModel jab tak screen dikhti hai
+    final userAsync = ref.watch(appUserProvider);
 
-    if (currentUserId == null) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
+    return userAsync.when(
+      loading: () =>
+          const Scaffold(body: Center(child: CircularProgressIndicator())),
+      error: (e, _) => Scaffold(body: Center(child: Text(e.toString()))),
+      data: (user) {
+        if (user == null) {
+          return const Scaffold(
+              body: Center(child: CircularProgressIndicator()));
+        }
 
-    return PopScope(
-      canPop: context.canPop(),
-
-      onPopInvokedWithResult: (didPop, _) {
-        if (didPop) return;
-        context.go(AppRouter.home);
+        return PopScope(
+          canPop: context.canPop(),
+          onPopInvokedWithResult: (didPop, _) {
+            if (didPop) return;
+            context.go(AppRouter.home);
+          },
+          child: Scaffold(
+            appBar: AppBar(
+              title: const Text('Chat Requests'),
+              leading: IconButton(
+                tooltip: 'Back',
+                icon: const Icon(Icons.arrow_back_rounded),
+                onPressed: () {
+                  if (context.canPop()) {
+                    context.pop();
+                  } else {
+                    context.go(AppRouter.home);
+                  }
+                },
+              ),
+              bottom: TabBar(
+                controller: _tabController,
+                tabs: const [
+                  Tab(text: 'Incoming'),
+                  Tab(text: 'Sent'),
+                ],
+              ),
+            ),
+            body: TabBarView(
+              controller: _tabController,
+              children: [
+                _IncomingList(userId: user.uid, onRespond: _respond),
+                _OutgoingList(userId: user.uid),
+              ],
+            ),
+          ),
+        );
       },
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Chat Requests'),
-          leading: IconButton(
-            tooltip: 'Back',
-            icon: const Icon(Icons.arrow_back_rounded),
-            // onPressed: () => AppRouter.backOrHome(context),
-            onPressed: () {
-              if (context.canPop()) {
-                context.pop();
-              } else {
-                context.go(AppRouter.home);
-              }
-            },
-          ),
-          bottom: TabBar(
-            controller: _tabController,
-            tabs: const [
-              Tab(text: 'Incoming'),
-              Tab(text: 'Sent'),
-            ],
-          ),
-        ),
-        body: TabBarView(
-          controller: _tabController,
-          children: [
-            _IncomingList(userId: currentUserId, onRespond: _respond),
-            _OutgoingList(userId: currentUserId),
-          ],
-        ),
-      ),
     );
   }
 }
@@ -129,9 +134,9 @@ class _IncomingList extends ConsumerWidget {
           itemCount: requests.length,
           itemBuilder: (context, index) {
             final request = requests[index];
-
             return Card(
-              margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              margin:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               child: Padding(
                 padding: const EdgeInsets.all(12),
                 child: Column(
@@ -160,8 +165,7 @@ class _IncomingList extends ConsumerWidget {
                               Text(
                                 request.fromUserName,
                                 style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                ),
+                                    fontWeight: FontWeight.bold),
                               ),
                               Text(
                                 AppFormatters.chatListTime(request.createdAt),
@@ -262,7 +266,8 @@ class _OutgoingList extends ConsumerWidget {
                     ? request.toUserId
                     : request.toUserName,
               ),
-              subtitle: Text(AppFormatters.chatListTime(request.createdAt)),
+              subtitle:
+                  Text(AppFormatters.chatListTime(request.createdAt)),
               trailing: Chip(
                 label: Text(
                   request.status.name[0].toUpperCase() +
