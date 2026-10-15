@@ -1,124 +1,207 @@
 # 💬 Velora
 
-![Flutter](https://img.shields.io/badge/Flutter-3.32-blue?logo=flutter)
-![Dart](https://img.shields.io/badge/Dart-3.x-0175C2?logo=dart)
-![Firebase](https://img.shields.io/badge/Firebase-Backend-FFCA28?logo=firebase)
+> A modern real-time Flutter chat application built with **Clean Architecture**, **Firebase**, and **Riverpod**.
+
+![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter&logoColor=white)
+![Dart](https://img.shields.io/badge/Dart-3.x-0175C2?logo=dart&logoColor=white)
+![Firebase](https://img.shields.io/badge/Firebase-Backend-FFCA28?logo=firebase&logoColor=black)
 ![Riverpod](https://img.shields.io/badge/Riverpod-State%20Management-42A5F5)
 ![Platform](https://img.shields.io/badge/Platform-Android-success)
-
-A production-ready real-time Flutter chat application built using **Clean Architecture**, **Firebase**, and **Riverpod**. Velora focuses on performance, scalability, modern UI, and maintainable code while delivering a smooth real-time messaging experience.
-
----
-
-## 📥 Download APK
-
-> APK will be available in the next release.
+![Architecture](https://img.shields.io/badge/Clean-Architecture-success)
+![Status](https://img.shields.io/badge/Status-Active-success)
 
 ---
 
-## 📱 Overview
+## 📱 About
 
-Velora is a modern one-to-one messaging application developed using Flutter. The project follows a **Feature-First Clean Architecture** with Repository Pattern and Riverpod state management.
+Velora is a production-inspired one-to-one messaging application developed using Flutter. The project follows **Feature-First Clean Architecture**, Repository Pattern, and Riverpod state management to deliver scalable, maintainable, and high-performance code.
 
-The application is designed to demonstrate production-level Flutter development practices including authentication, real-time messaging, offline caching, Firebase integration, reusable components, and responsive UI.
+It demonstrates real-world Flutter development practices including authentication, real-time messaging, offline caching, profile management, image uploads, responsive UI, and Firebase integration.
 
 ---
 
-## ✨ Features
+# ✨ Features
 
 - 🔐 Firebase Authentication
-- 💬 Real-Time One-to-One Messaging
+- 💬 Real-time One-to-One Messaging
 - 📷 Image Sharing
-- 👥 Contact Discovery
-- 🟢 Online & Offline Presence
+- 👥 User Search
+- 📩 Chat Request System
+- 🟢 Online / Offline Presence
+- 👀 Message Delivery & Read Status
+- 👤 Profile Management
+- 🔒 Privacy Settings
 - ☁ Cloud Firestore Integration
-- 📦 Firebase Storage Integration
-- 💾 Offline Data Caching using Hive
+- ☁ Firebase Storage
+- 🌩 Cloudinary Image Upload
+- 💾 Offline Storage (Hive)
 - ⚡ Riverpod State Management
 - 🧭 GoRouter Navigation
-- 🎨 Custom Light & Dark Theme
-- 📱 Responsive Material Design UI
+- 🎨 Light & Dark Theme
 - 🏗 Feature-First Clean Architecture
 - 🔄 Repository Pattern
 - ♻ Reusable Widgets & Components
 
 ---
 
-## 🛠 Tech Stack
+# 🛠 Tech Stack
 
-- Flutter
-- Dart
-- Firebase Authentication
-- Cloud Firestore
-- Firebase Storage
-- Firebase Realtime Database
-- Hive
-- Riverpod
-- GoRouter
+| Technology | Purpose |
+|------------|---------|
+| Flutter | Cross-platform App Development |
+| Dart | Programming Language |
+| Firebase Authentication | User Authentication |
+| Cloud Firestore | Database |
+| Firebase Storage | File Storage |
+| Firebase Realtime Database | Online Presence |
+| Cloudinary | Image Hosting |
+| Hive | Offline Cache |
+| Riverpod | State Management |
+| GoRouter | Navigation |
 
 ---
 
-## 🏗 Architecture
+# 🏗 Architecture
 
-The project follows **Feature-First Clean Architecture**.
+The application follows **Feature-First Clean Architecture**.
+
+```
+Presentation
+      │
+      ▼
+Domain
+      │
+      ▼
+Data
+      │
+      ▼
+Firebase / Hive / Cloudinary
+```
+
+### Architecture Highlights
+
+- Feature-First Structure
+- Clean Architecture
+- SOLID Principles
+- Repository Pattern
+- Separation of Concerns
+- Scalable Codebase
+- Reusable Components
+
+---
+
+# 📂 Project Structure
 
 ```
 lib/
 │
 ├── app/
+│
 ├── core/
+│
 ├── features/
 │   ├── auth/
 │   ├── chat/
 │   ├── contacts/
 │   ├── home/
 │   ├── profile/
+│   ├── settings/
 │   └── splash/
 │
 ├── shared/
+│
 └── main.dart
 ```
 
 ---
 
-## 🚀 Getting Started
+# 🚀 Getting Started
+
+Clone the repository
+
+```bash
+git clone https://github.com/KartikSharma-tech/velora.git
+```
+
+Go to project
+
+```bash
+cd velora
+```
+
+Install dependencies
 
 ```bash
 flutter pub get
+```
 
+Run project
+
+```bash
 flutter run
 ```
 
 ---
 
-## 📸 Screenshots
+# 📥 Download APK
+
+> APK available from the GitHub Releases section.
+
+Latest Version
+
+**v1.0.0**
+
+---
+
+# 📸 Screenshots
 
 > Screenshots will be added in the next update.
 
 ---
 
-## 🎥 Demo
+# 🎥 Demo
 
-> Demo video will be added soon.
+> Demo video will be added in the next update.
 
 ---
 
-## 🚀 Future Improvements
+# 🚀 Upcoming Features
 
 - 👥 Group Chats
 - 🌐 Communities
-- 📢 Status / Stories
-- 📸 Image Captions
+- 📢 Stories / Status
 - 📞 Voice Calling
 - 🎥 Video Calling
-- 📌 Pinned Chats
 - 😀 Message Reactions
+- 📌 Pinned Chats
 - 🔍 Chat Search
-- ☁ Multi-device Cloud Sync
+- 📂 Chat Archive
+- ↪ Message Forwarding
+- 🔔 Push Notifications
+- ☁ Multi-device Sync
+- 🧪 Widget Testing
+- ⚙ GitHub Actions CI/CD
+- 📦 Firebase App Distribution
 
 ---
 
-## 👨‍💻 Developer
+# 📈 Project Goals
+
+Velora is built to demonstrate production-level Flutter architecture and development practices.
+
+Current focus includes:
+
+- Clean Architecture
+- Scalable Folder Structure
+- Firebase Integration
+- Offline Support
+- Performance Optimization
+- Modern UI
+- Production-ready Code Quality
+
+---
+
+# 👨‍💻 Developer
 
 **Kartik Sharma**
 
@@ -132,6 +215,22 @@ https://github.com/KartikSharma-tech
 
 ---
 
-## ⭐ Support
+# 🤝 Contributions
 
-If you like this project, don't forget to ⭐ star the repository.
+Contributions, feature suggestions, and bug reports are welcome.
+
+Feel free to open an Issue or submit a Pull Request.
+
+---
+
+# ⭐ Support
+
+If you found this project useful, please consider giving it a ⭐ on GitHub.
+
+It motivates me to continue building high-quality open-source Flutter projects.
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License.
