@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class FirebaseAuthDataSource {
   FirebaseAuthDataSource({
@@ -122,6 +123,9 @@ class FirebaseAuthDataSource {
   /// ------------------------------------------------------------
 
   Future<void> signOut() async {
-    await _firebaseAuth.signOut();
-  }
-}
+  try {
+    await FirebaseFirestore.instance.terminate();
+    await FirebaseFirestore.instance.clearPersistence();
+  } catch (_) {}
+  await _firebaseAuth.signOut();
+}}
