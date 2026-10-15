@@ -52,7 +52,7 @@ Future<void> signUp({
     email: email,
     photoUrl: '',
     about: "Hey there! I'm using Velora.",
-    isOnline: true,
+    isOnline: false,
     lastSeen: DateTime.now(),
     createdAt: DateTime.now(),
     updatedAt: DateTime.now(),

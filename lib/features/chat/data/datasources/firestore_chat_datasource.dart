@@ -83,6 +83,8 @@ class FirestoreChatDataSource {
       'lastMessageSenderId': message.senderId,
       'lastMessageTime': Timestamp.fromDate(message.timestamp),
       'lastMessageSeen': false,
+      // A new message makes a previously removed chat visible again.
+      'deletedBy': <String>[],
     });
   }
 
@@ -171,6 +173,10 @@ class FirestoreChatDataSource {
 
           for (final doc in snapshot.docs) {
             final room = ChatRoomModel.fromMap(doc.data());
+
+            if (room.deletedBy.contains(currentUserId)) {
+              continue;
+            }
 
             final otherUserId = room.participants.firstWhere(
               (id) => id != currentUserId,
@@ -296,6 +302,16 @@ class FirestoreChatDataSource {
       'pinnedBy': pin
           ? FieldValue.arrayUnion([userId])
           : FieldValue.arrayRemove([userId]),
+    });
+  }
+
+  Future<void> deleteChatForMe({
+    required String roomId,
+    required String userId,
+  }) async {
+    await _chatRooms.doc(roomId).update({
+      'deletedBy': FieldValue.arrayUnion([userId]),
+      'pinnedBy': FieldValue.arrayRemove([userId]),
     });
   }
 

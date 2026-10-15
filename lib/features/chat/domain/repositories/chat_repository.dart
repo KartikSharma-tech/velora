@@ -97,6 +97,12 @@ Future<void> markMessageSeen({
     required bool pin,
   });
 
+  /// Hides this conversation only from [userId]'s chat list.
+  Future<void> deleteChatForMe({
+    required String roomId,
+    required String userId,
+  });
+
   // ==========================================================
   // Image Upload
   // ==========================================================

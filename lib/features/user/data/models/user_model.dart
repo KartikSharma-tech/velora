@@ -3,6 +3,8 @@ import '../../../../shared/enums/privacy_enums.dart';
 // enum Discoverability { phoneNumber, username, hidden }
 
 class UserModel {
+  static const _onlineFreshnessWindow = Duration(minutes: 2);
+
   final String uid;
   final String name;
   final String email;
@@ -50,7 +52,7 @@ class UserModel {
       email: map['email'] ?? '',
       photoUrl: map['photoUrl'] ?? '',
       about: map['about'] ?? '',
-      isOnline: map['isOnline'] ?? false,
+      isOnline: _isPresenceFresh(map),
       lastSeen: map['lastSeen'] != null
           ? (map['lastSeen'] as Timestamp).toDate()
           : null,
@@ -71,6 +73,15 @@ class UserModel {
 ),
     );
   }
+
+  static bool _isPresenceFresh(Map<String, dynamic> map) {
+    if (map['isOnline'] != true) return false;
+    final lastSeen = map['lastSeen'];
+    if (lastSeen is! Timestamp) return false;
+    return DateTime.now().difference(lastSeen.toDate()) <=
+        _onlineFreshnessWindow;
+  }
+
   static DateTime? _readTimestamp(dynamic value) {
     if (value == null) return null;
 

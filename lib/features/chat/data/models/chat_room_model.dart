@@ -15,6 +15,9 @@ class ChatRoomModel {
   /// userIds who are currently typing in this room.
   final List<String> typingUsers;
 
+  /// Users who have removed this conversation from their own chat list.
+  final List<String> deletedBy;
+
   const ChatRoomModel({
     required this.id,
     required this.participants,
@@ -25,6 +28,7 @@ class ChatRoomModel {
     required this.createdAt,
     this.pinnedBy = const [],
     this.typingUsers = const [],
+    this.deletedBy = const [],
   });
 
   /// BUG FIX (Home screen crash: "type 'Timestamp' is not a subtype
@@ -59,6 +63,7 @@ class ChatRoomModel {
       createdAt: _readTimestamp(map['createdAt']),
       pinnedBy: List<String>.from(map['pinnedBy'] ?? const []),
       typingUsers: List<String>.from(map['typingUsers'] ?? const []),
+      deletedBy: List<String>.from(map['deletedBy'] ?? const []),
     );
   }
 
@@ -82,6 +87,7 @@ class ChatRoomModel {
       'createdAt': Timestamp.fromDate(createdAt),
       'pinnedBy': pinnedBy,
       'typingUsers': typingUsers,
+      'deletedBy': deletedBy,
     };
   }
 
@@ -95,6 +101,7 @@ class ChatRoomModel {
     DateTime? createdAt,
     List<String>? pinnedBy,
     List<String>? typingUsers,
+    List<String>? deletedBy,
   }) {
     return ChatRoomModel(
       id: id ?? this.id,
@@ -106,6 +113,7 @@ class ChatRoomModel {
       createdAt: createdAt ?? this.createdAt,
       pinnedBy: pinnedBy ?? this.pinnedBy,
       typingUsers: typingUsers ?? this.typingUsers,
+      deletedBy: deletedBy ?? this.deletedBy,
     );
   }
 }

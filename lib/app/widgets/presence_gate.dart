@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -17,6 +19,9 @@ class PresenceGate extends ConsumerStatefulWidget {
 class _PresenceGateState extends ConsumerState<PresenceGate>
     with WidgetsBindingObserver {
   String? _currentUid;
+  Timer? _heartbeatTimer;
+
+  static const _heartbeatInterval = Duration(seconds: 30);
 
   @override
   void initState() {
@@ -26,6 +31,7 @@ class _PresenceGateState extends ConsumerState<PresenceGate>
 
   @override
   void dispose() {
+    _heartbeatTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -34,12 +40,23 @@ class _PresenceGateState extends ConsumerState<PresenceGate>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (_currentUid == null) return;
     if (state == AppLifecycleState.resumed) {
-      _setOnline(_currentUid!, true);
+      _startHeartbeat(_currentUid!);
     } else if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.detached) {
+      _stopHeartbeat();
       _setOnline(_currentUid!, false);
     }
   }
+
+  void _startHeartbeat(String uid) {
+    _heartbeatTimer?.cancel();
+    _setOnline(uid, true);
+    _heartbeatTimer = Timer.periodic(_heartbeatInterval, (_) {
+      if (_currentUid == uid) _setOnline(uid, true);
+    });
+  }
+
+  void _stopHeartbeat() => _heartbeatTimer?.cancel();
 
   void _setOnline(String uid, bool isOnline) {
     ref.read(userRepositoryProvider).setOnlineStatus(
@@ -55,7 +72,7 @@ class _PresenceGateState extends ConsumerState<PresenceGate>
     if (currentUser != null && _currentUid == null) {
       _currentUid = currentUser.uid;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _setOnline(currentUser.uid, true);
+        if (mounted) _startHeartbeat(currentUser.uid);
       });
     }
 
@@ -70,10 +87,11 @@ class _PresenceGateState extends ConsumerState<PresenceGate>
 
         if (nextUser != null) {
           _currentUid = nextUser.uid;
-          _setOnline(nextUser.uid, true);
+          _startHeartbeat(nextUser.uid);
         }
 
         if (nextUser == null && prevUser != null) {
+          _stopHeartbeat();
           _setOnline(prevUser.uid, false);
           _currentUid = null;
         }

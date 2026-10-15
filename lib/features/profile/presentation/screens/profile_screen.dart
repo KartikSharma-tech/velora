@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:io';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'package:image_picker/image_picker.dart';
 import '../../../../app/theme/app_colors.dart';
+import '../../../../core/services/cloudinary_service.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../user/presentation/providers/user_provider.dart';
 
@@ -50,24 +49,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       final user = ref.read(appUserProvider).valueOrNull;
       if (user == null) return;
 
-      final uri = Uri.parse(
-        'https://api.cloudinary.com/v1_1/wve0mvba/image/upload',
+      final downloadUrl = await const CloudinaryService().uploadImage(
+        file: File(file.path),
+        folder: 'profile_images',
+        publicId: 'profile_${user.uid}',
       );
-      final request = http.MultipartRequest('POST', uri)
-        ..fields['upload_preset'] = 'velora_profile'
-        ..fields['public_id'] = 'profile_${user.uid}'
-        ..files.add(await http.MultipartFile.fromPath('file', file.path));
-
-      final response = await request.send();
-      final responseData = await response.stream.bytesToString();
-      final json = jsonDecode(responseData);
-
-      if (response.statusCode != 200) {
-        throw Exception(json['error']['message'] ?? 'Upload failed');
-      }
-
-      final downloadUrl = json['secure_url'] as String;
-
       await ref.read(userRepositoryProvider).updateProfile(
             uid: user.uid,
             name: _nameController.text.trim(),

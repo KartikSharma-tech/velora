@@ -188,6 +188,14 @@ Future<void> markMessageSeen({
     return _dataSource.togglePinChat(roomId: roomId, userId: userId, pin: pin);
   }
 
+  @override
+  Future<void> deleteChatForMe({
+    required String roomId,
+    required String userId,
+  }) {
+    return _dataSource.deleteChatForMe(roomId: roomId, userId: userId);
+  }
+
   // ==========================================================
   // Image Upload
   // ==========================================================

@@ -2,9 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../user/presentation/providers/user_provider.dart';
 import '../../../../app/router/app_router.dart';
-import '../../../../app/theme/app_colors.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../chat/data/models/chat_tile_model.dart';
@@ -382,6 +380,98 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
+  Future<void> _showChatActions(
+    BuildContext context,
+    WidgetRef ref,
+    ChatTileModel chat,
+    String userId,
+  ) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: _surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 20),
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: Icon(
+                  chat.isPinned
+                      ? Icons.push_pin_outlined
+                      : Icons.push_pin_rounded,
+                  color: _textPrimary,
+                ),
+                title: Text(
+                  chat.isPinned ? 'Unpin chat' : 'Pin chat',
+                  style: const TextStyle(color: _textPrimary),
+                ),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  ref.read(chatRepositoryProvider).togglePinChat(
+                        roomId: chat.roomId,
+                        userId: userId,
+                        pin: !chat.isPinned,
+                      );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete_outline, color: Colors.red),
+                title: const Text(
+                  'Delete chat',
+                  style: TextStyle(color: Colors.red),
+                ),
+                onTap: () async {
+                  Navigator.pop(sheetContext);
+                  final shouldDelete = await showDialog<bool>(
+                    context: context,
+                    builder: (dialogContext) => AlertDialog(
+                      title: const Text('Delete chat?'),
+                      content: Text(
+                        'This removes ${chat.otherUserName} from your chat list. '
+                        'Messages are not deleted for the other person.',
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(dialogContext, false),
+                          child: const Text('Cancel'),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(dialogContext, true),
+                          style: TextButton.styleFrom(
+                            foregroundColor: Colors.red,
+                          ),
+                          child: const Text('Delete'),
+                        ),
+                      ],
+                    ),
+                  );
+
+                  if (shouldDelete != true) return;
+
+                  try {
+                    await ref.read(chatRepositoryProvider).deleteChatForMe(
+                          roomId: chat.roomId,
+                          userId: userId,
+                        );
+                  } catch (_) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Unable to delete chat.')),
+                      );
+                    }
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildChatTile(
     BuildContext context,
     WidgetRef ref,
@@ -389,15 +479,7 @@ class HomeScreen extends ConsumerWidget {
     String userId,
   ) {
     return GestureDetector(
-      onLongPress: () {
-        ref
-            .read(chatRepositoryProvider)
-            .togglePinChat(
-              roomId: chat.roomId,
-              userId: userId,
-              pin: !chat.isPinned,
-            );
-      },
+      onLongPress: () => _showChatActions(context, ref, chat, userId),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
         child: BackdropFilter(
