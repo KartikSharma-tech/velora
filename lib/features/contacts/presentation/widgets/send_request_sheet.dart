@@ -5,7 +5,6 @@ import '../../../../app/theme/app_colors.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../chat_requests/presentation/providers/chat_request_provider.dart';
 import '../../../user/data/models/user_model.dart';
-import '../../../user/presentation/providers/user_provider.dart';
 
 class SendRequestSheet extends ConsumerStatefulWidget {
   const SendRequestSheet({super.key, required this.target});
