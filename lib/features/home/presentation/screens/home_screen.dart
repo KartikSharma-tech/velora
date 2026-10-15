@@ -31,8 +31,7 @@ class HomeScreen extends ConsumerWidget {
     } catch (_) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Unable to logout. Please try again.')),
+          const SnackBar(content: Text('Unable to logout. Please try again.')),
         );
       }
     }
@@ -40,7 +39,6 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // PERMANENT FIX: appUserProvider — Auth + Firestore dono ready hone pe hi render
     final userAsync = ref.watch(appUserProvider);
 
     return userAsync.when(
@@ -51,8 +49,11 @@ class HomeScreen extends ConsumerWidget {
       error: (e, _) => Scaffold(
         backgroundColor: _bg,
         body: Center(
-            child: Text(e.toString(),
-                style: const TextStyle(color: _textSecondary))),
+          child: Text(
+            e.toString(),
+            style: const TextStyle(color: _textSecondary),
+          ),
+        ),
       ),
       data: (user) {
         if (user == null) {
@@ -67,8 +68,14 @@ class HomeScreen extends ConsumerWidget {
         return Scaffold(
           backgroundColor: _bg,
           extendBodyBehindAppBar: true,
-          appBar: _buildAppBar(context, ref, user.name, user.photoUrl,
-              user.uid),
+          appBar: _buildAppBar(
+            context,
+            ref,
+            user.name,
+            user.photoUrl,
+            user.uid,
+            user.isOnline,
+          ),
           body: Stack(
             children: [
               _buildBackground(),
@@ -77,27 +84,14 @@ class HomeScreen extends ConsumerWidget {
                   color: _primary,
                   backgroundColor: _surface,
                   onRefresh: () async {
-                    await Future.delayed(
-                        const Duration(milliseconds: 400));
+                    await Future.delayed(const Duration(milliseconds: 400));
                   },
                   child: CustomScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
                     slivers: [
                       SliverToBoxAdapter(
                         child: Padding(
-                          padding:
-                              const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                          child: _buildProfileCard(
-                            context,
-                            name: user.name,
-                            photoUrl: user.photoUrl,
-                          ),
-                        ),
-                      ),
-                      SliverToBoxAdapter(
-                        child: Padding(
-                          padding:
-                              const EdgeInsets.fromLTRB(20, 28, 20, 12),
+                          padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
                           child: Row(
                             children: [
                               const Text(
@@ -113,16 +107,17 @@ class HomeScreen extends ConsumerWidget {
                               chatsAsync.maybeWhen(
                                 data: (chats) => chats.isNotEmpty
                                     ? Container(
-                                        padding:
-                                            const EdgeInsets.symmetric(
+                                        padding: const EdgeInsets.symmetric(
                                           horizontal: 10,
                                           vertical: 3,
                                         ),
                                         decoration: BoxDecoration(
-                                          color: _primary
-                                              .withValues(alpha: 0.15),
-                                          borderRadius:
-                                              BorderRadius.circular(20),
+                                          color: _primary.withValues(
+                                            alpha: 0.15,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            20,
+                                          ),
                                         ),
                                         child: Text(
                                           '${chats.length}',
@@ -143,8 +138,7 @@ class HomeScreen extends ConsumerWidget {
                       chatsAsync.when(
                         loading: () => const SliverFillRemaining(
                           child: Center(
-                            child: CircularProgressIndicator(
-                                color: _primary),
+                            child: CircularProgressIndicator(color: _primary),
                           ),
                         ),
                         error: (error, _) => SliverFillRemaining(
@@ -154,8 +148,7 @@ class HomeScreen extends ConsumerWidget {
                               child: Text(
                                 error.toString(),
                                 textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                    color: _textSecondary),
+                                style: const TextStyle(color: _textSecondary),
                               ),
                             ),
                           ),
@@ -167,13 +160,11 @@ class HomeScreen extends ConsumerWidget {
                             );
                           }
                           return SliverPadding(
-                            padding: const EdgeInsets.fromLTRB(
-                                16, 0, 16, 100),
+                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
                             sliver: SliverList(
                               delegate: SliverChildBuilderDelegate(
                                 (context, index) => Padding(
-                                  padding:
-                                      const EdgeInsets.only(bottom: 2),
+                                  padding: const EdgeInsets.only(bottom: 2),
                                   child: _buildChatTile(
                                     context,
                                     ref,
@@ -205,6 +196,7 @@ class HomeScreen extends ConsumerWidget {
     String name,
     String photoUrl,
     String userId,
+    bool isOnline,
   ) {
     return AppBar(
       backgroundColor: _bg.withValues(alpha: 0.95),
@@ -224,6 +216,48 @@ class HomeScreen extends ConsumerWidget {
           tooltip: 'Search',
           onPressed: () => context.push(AppRouter.searchUsers),
           icon: const Icon(Icons.search_rounded, color: _textSecondary),
+        ),
+        // Avatar with dynamic online dot
+        GestureDetector(
+          onTap: () => context.push(AppRouter.profile),
+          child: Stack(
+            children: [
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: _primary.withValues(alpha: 0.2),
+                backgroundImage: photoUrl.isNotEmpty
+                    ? NetworkImage(photoUrl)
+                    : null,
+                child: photoUrl.isEmpty
+                    ? Text(
+                        name.isEmpty ? '?' : name[0].toUpperCase(),
+                        style: const TextStyle(
+                          color: _primary,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      )
+                    : null,
+              ),
+              if (isOnline)
+                Positioned(
+                  right: 0,
+                  bottom: 0,
+                  child: Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: _online,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: _bg.withValues(alpha: 0.95),
+                        width: 1.5,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
         PopupMenuButton<String>(
           icon: const Icon(Icons.more_vert, color: _textSecondary),
@@ -250,12 +284,16 @@ class HomeScreen extends ConsumerWidget {
               value: 'profile',
               child: Row(
                 children: const [
-                  Icon(Icons.person_outline_rounded,
-                      color: _textSecondary, size: 18),
+                  Icon(
+                    Icons.person_outline_rounded,
+                    color: _textSecondary,
+                    size: 18,
+                  ),
                   SizedBox(width: 10),
-                  Text('Profile',
-                      style:
-                          TextStyle(color: _textPrimary, fontSize: 14)),
+                  Text(
+                    'Profile',
+                    style: TextStyle(color: _textPrimary, fontSize: 14),
+                  ),
                 ],
               ),
             ),
@@ -263,12 +301,16 @@ class HomeScreen extends ConsumerWidget {
               value: 'settings',
               child: Row(
                 children: const [
-                  Icon(Icons.settings_outlined,
-                      color: _textSecondary, size: 18),
+                  Icon(
+                    Icons.settings_outlined,
+                    color: _textSecondary,
+                    size: 18,
+                  ),
                   SizedBox(width: 10),
-                  Text('Settings',
-                      style:
-                          TextStyle(color: _textPrimary, fontSize: 14)),
+                  Text(
+                    'Settings',
+                    style: TextStyle(color: _textPrimary, fontSize: 14),
+                  ),
                 ],
               ),
             ),
@@ -277,12 +319,16 @@ class HomeScreen extends ConsumerWidget {
               value: 'logout',
               child: Row(
                 children: const [
-                  Icon(Icons.logout_rounded,
-                      color: Color(0xFFEF4444), size: 18),
+                  Icon(
+                    Icons.logout_rounded,
+                    color: Color(0xFFEF4444),
+                    size: 18,
+                  ),
                   SizedBox(width: 10),
-                  Text('Logout',
-                      style: TextStyle(
-                          color: Color(0xFFEF4444), fontSize: 14)),
+                  Text(
+                    'Logout',
+                    style: TextStyle(color: Color(0xFFEF4444), fontSize: 14),
+                  ),
                 ],
               ),
             ),
@@ -336,146 +382,6 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  // PERMANENT FIX: UserModel directly pass hota hai — no AsyncValue handling needed
-  Widget _buildProfileCard(
-    BuildContext context, {
-    required String name,
-    required String photoUrl,
-  }) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Container(
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            color: _surface.withValues(alpha: 0.80),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.08),
-            ),
-          ),
-          child: Row(
-            children: [
-              Stack(
-                children: [
-                  CircleAvatar(
-                    radius: 28,
-                    backgroundColor: _primary.withValues(alpha: 0.2),
-                    backgroundImage: photoUrl.isNotEmpty
-                        ? NetworkImage(photoUrl)
-                        : null,
-                    child: photoUrl.isEmpty
-                        ? Text(
-                            name.isEmpty ? '?' : name[0].toUpperCase(),
-                            style: const TextStyle(
-                              color: _primary,
-                              fontSize: 22,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          )
-                        : null,
-                  ),
-                  Positioned(
-                    right: 1,
-                    bottom: 1,
-                    child: Container(
-                      width: 13,
-                      height: 13,
-                      decoration: BoxDecoration(
-                        color: _online,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: _surface, width: 2),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Welcome back',
-                      style: TextStyle(
-                        color: _textHint,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    // Guaranteed non-null — no loading shimmer needed
-                    Text(
-                      name.isEmpty ? '?' : name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: _textPrimary,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -0.2,
-                      ),
-                    ),
-                    const SizedBox(height: 5),
-                    Row(
-                      children: [
-                        Container(
-                          width: 7,
-                          height: 7,
-                          decoration: const BoxDecoration(
-                            color: _online,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        const SizedBox(width: 5),
-                        const Text(
-                          'Online',
-                          style: TextStyle(
-                            color: _online,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              GestureDetector(
-                onTap: () => context.push(AppRouter.searchUsers),
-                child: Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [_primary, _primaryDark],
-                    ),
-                    borderRadius: BorderRadius.circular(13),
-                    boxShadow: [
-                      BoxShadow(
-                        color: _primary.withValues(alpha: 0.35),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.edit_rounded,
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildChatTile(
     BuildContext context,
     WidgetRef ref,
@@ -484,7 +390,9 @@ class HomeScreen extends ConsumerWidget {
   ) {
     return GestureDetector(
       onLongPress: () {
-        ref.read(chatRepositoryProvider).togglePinChat(
+        ref
+            .read(chatRepositoryProvider)
+            .togglePinChat(
               roomId: chat.roomId,
               userId: userId,
               pin: !chat.isPinned,
@@ -525,7 +433,9 @@ class HomeScreen extends ConsumerWidget {
                 },
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 12),
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
                   child: Row(
                     children: [
                       Stack(
@@ -533,18 +443,15 @@ class HomeScreen extends ConsumerWidget {
                         children: [
                           CircleAvatar(
                             radius: 26,
-                            backgroundColor:
-                                _primary.withValues(alpha: 0.15),
-                            backgroundImage:
-                                chat.otherUserPhoto.isNotEmpty
-                                    ? NetworkImage(chat.otherUserPhoto)
-                                    : null,
+                            backgroundColor: _primary.withValues(alpha: 0.15),
+                            backgroundImage: chat.otherUserPhoto.isNotEmpty
+                                ? NetworkImage(chat.otherUserPhoto)
+                                : null,
                             child: chat.otherUserPhoto.isEmpty
                                 ? Text(
                                     chat.otherUserName.isEmpty
                                         ? '?'
-                                        : chat.otherUserName[0]
-                                            .toUpperCase(),
+                                        : chat.otherUserName[0].toUpperCase(),
                                     style: const TextStyle(
                                       color: _primary,
                                       fontWeight: FontWeight.w700,
@@ -564,7 +471,9 @@ class HomeScreen extends ConsumerWidget {
                                   color: _online,
                                   shape: BoxShape.circle,
                                   border: Border.all(
-                                      color: _surface2, width: 2),
+                                    color: _surface2,
+                                    width: 2,
+                                  ),
                                 ),
                               ),
                             ),
@@ -626,8 +535,7 @@ class HomeScreen extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Text(
-                            AppFormatters.chatListTime(
-                                chat.lastMessageTime),
+                            AppFormatters.chatListTime(chat.lastMessageTime),
                             style: TextStyle(
                               fontSize: 11,
                               color: chat.lastMessageSeen
@@ -674,9 +582,7 @@ class HomeScreen extends ConsumerWidget {
             decoration: BoxDecoration(
               color: _primary.withValues(alpha: 0.10),
               borderRadius: BorderRadius.circular(24),
-              border: Border.all(
-                color: _primary.withValues(alpha: 0.20),
-              ),
+              border: Border.all(color: _primary.withValues(alpha: 0.20)),
             ),
             child: const Icon(
               Icons.chat_bubble_outline_rounded,
@@ -697,11 +603,7 @@ class HomeScreen extends ConsumerWidget {
           const Text(
             'Tap the pencil button to start\na new conversation',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              color: _textSecondary,
-              fontSize: 14,
-              height: 1.5,
-            ),
+            style: TextStyle(color: _textSecondary, fontSize: 14, height: 1.5),
           ),
         ],
       ),
@@ -732,10 +634,7 @@ class HomeScreen extends ConsumerWidget {
         icon: const Icon(Icons.chat_rounded, color: Colors.white),
         label: const Text(
           'New Chat',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w600,
-          ),
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
         ),
       ),
     );

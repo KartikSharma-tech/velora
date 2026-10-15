@@ -50,7 +50,16 @@ class _PresenceGateState extends ConsumerState<PresenceGate>
 
   @override
   Widget build(BuildContext context) {
-    // PERMANENT FIX: appUserProvider — UserModel directly, no raw UID
+    // ── NEW: seed _currentUid on first build if user already logged in ──
+    final currentUser = ref.watch(appUserProvider).valueOrNull;
+    if (currentUser != null && _currentUid == null) {
+      _currentUid = currentUser.uid;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _setOnline(currentUser.uid, true);
+      });
+    }
+
+    // ── EXISTING: react to login / logout / user-switch ──
     ref.listen<AsyncValue<UserModel?>>(
       appUserProvider,
       (previous, next) {
