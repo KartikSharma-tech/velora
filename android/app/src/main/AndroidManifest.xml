@@ -1,15 +1,16 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 <!-- Contacts permission for reading contacts From Device start -->
 <uses-permission android:name="android.permission.READ_CONTACTS" />
+<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 <!-- Contacts permission for reading contacts From Device end-->
 
     <application
         android:label="velora"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
-        android:enableOnBackInvokedCallback="true">
+        android:enableOnBackInvokedCallback="true"
         android:allowBackup="false"
-        android:fullBackupContent="false"
+        android:fullBackupContent="false">
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -38,7 +39,6 @@
             android:name="flutterEmbedding"
             android:value="2" />
     </application>
-    <uses-permission android:name="android.permission.READ_CONTACTS"/>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
          https://developer.android.com/reference/android/content/Intent#ACTION_PROCESS_TEXT.

@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class MessageModel {
   final String id;
   final String chatRoomId;
@@ -54,15 +56,12 @@ class MessageModel {
       receiverId: map['receiverId'] ?? '',
       text: map['text'] ?? '',
       type: map['type'] ?? 'text',
-      timestamp: DateTime.parse(map['timestamp']),
+      timestamp: _readTimestamp(map['timestamp']),
       isSeen: map['isSeen'] ?? false,
       isDelivered: map['isDelivered'] ?? false,
 
-      deliveredAt: map['deliveredAt'] != null
-          ? DateTime.parse(map['deliveredAt'])
-          : null,
-
-      seenAt: map['seenAt'] != null ? DateTime.parse(map['seenAt']) : null,
+      deliveredAt: _readOptionalTimestamp(map['deliveredAt']),
+      seenAt: _readOptionalTimestamp(map['seenAt']),
       imageUrl: map['imageUrl'],
       replyToId: map['replyToId'],
       replyToText: map['replyToText'],
@@ -71,6 +70,23 @@ class MessageModel {
       isDeletedForEveryone: map['isDeletedForEveryone'] ?? false,
       reactions: Map<String, String>.from(map['reactions'] ?? const {}),
     );
+  }
+
+  static DateTime _readTimestamp(dynamic value) {
+    if (value is Timestamp) return value.toDate();
+    if (value is DateTime) return value;
+    if (value is String) {
+      return DateTime.tryParse(value) ?? DateTime.now();
+    }
+    return DateTime.now();
+  }
+
+  static DateTime? _readOptionalTimestamp(dynamic value) {
+    if (value == null) return null;
+    if (value is Timestamp) return value.toDate();
+    if (value is DateTime) return value;
+    if (value is String) return DateTime.tryParse(value);
+    return null;
   }
 
   Map<String, dynamic> toMap() {
@@ -129,6 +145,9 @@ class MessageModel {
       type: type ?? this.type,
       timestamp: timestamp ?? this.timestamp,
       isSeen: isSeen ?? this.isSeen,
+      isDelivered: isDelivered ?? this.isDelivered,
+      deliveredAt: deliveredAt ?? this.deliveredAt,
+      seenAt: seenAt ?? this.seenAt,
       imageUrl: imageUrl ?? this.imageUrl,
       replyToId: replyToId ?? this.replyToId,
       replyToText: replyToText ?? this.replyToText,

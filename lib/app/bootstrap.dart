@@ -6,6 +6,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import '../core/services/hive_service.dart';
+import '../core/services/notification_service.dart';
 import '../firebase_options.dart';
 import 'app.dart';
 
@@ -59,6 +60,13 @@ Future<void> bootstrap() async {
     debugPrint('bootstrap: runApp — calling');
     runApp(const ProviderScope(child: VeloraApp()));
     debugPrint('bootstrap: runApp — called');
+    await WidgetsBinding.instance.endOfFrame;
+    try {
+      await NotificationService.instance.initialize();
+    } catch (e, st) {
+      // Notifications are optional and must not prevent the existing app from opening.
+      debugPrint('Notification initialization failed: $e\n$st');
+    }
   } catch (e, st) {
     debugPrint('BOOTSTRAP FAILED: $e');
     debugPrint('STACK:\n$st');

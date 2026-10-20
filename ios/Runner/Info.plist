@@ -26,15 +26,17 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSContactsUsageDescription</key>
+	<string>Velora uses your contacts to find people you already know.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 	<key>UIApplicationSceneManifest</key>
-		<key>NSContactsUsageDescription</key>
-<string>Velora uses your contacts to find people you already know.</string>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
 		<false/>
 		<key>UISceneConfigurations</key>
-		<key>NSContactsUsageDescription</key>
-<string>Velora uses your contacts to show people you already know who are on the app.</string>
 		<dict>
 			<key>UIWindowSceneSessionRoleApplication</key>
 			<array>

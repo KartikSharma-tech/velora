@@ -1,6 +1,6 @@
 import '../../domain/repositories/auth_repository.dart';
 import '../datasources/firebase_auth_datasource.dart';
-
+import '../../../../core/services/notification_service.dart';
 import '../../../user/data/models/user_model.dart';
 import '../../../user/domain/repositories/user_repository.dart';
 
@@ -20,67 +20,59 @@ class AuthRepositoryImpl implements AuthRepository {
   bool get isLoggedIn => _remoteDataSource.isLoggedIn;
 
   @override
-  Future<void> signIn({
+  Future<void> signIn({required String email, required String password}) async {
+    await _remoteDataSource.signIn(email: email, password: password);
+  }
+
+  @override
+  Future<void> signUp({
+    required String name,
     required String email,
     required String password,
+    required String phone,
   }) async {
-    await _remoteDataSource.signIn(
+    await _remoteDataSource.signUp(email: email, password: password);
+
+    await _remoteDataSource.updateDisplayName(name);
+
+    final uid = _remoteDataSource.currentUserId;
+    if (uid == null) throw Exception('User not found after signup.');
+
+    final user = UserModel(
+      uid: uid,
+      name: name,
       email: email,
-      password: password,
+      photoUrl: '',
+      about: "Hey there! I'm using Velora.",
+      isOnline: false,
+      lastSeen: DateTime.now(),
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+      phoneNumber: phone, // ✅ phone save
     );
+
+    await _userRepository.createUser(user);
+    await _remoteDataSource.sendEmailVerification();
   }
-@override
-Future<void> signUp({
-  required String name,
-  required String email,
-  required String password,
-  required String phone,
-}) async {
-  await _remoteDataSource.signUp(
-    email: email,
-    password: password,
-  );
 
-  await _remoteDataSource.updateDisplayName(name);
-
-  final uid = _remoteDataSource.currentUserId;
-  if (uid == null) throw Exception('User not found after signup.');
-
-  final user = UserModel(
-    uid: uid,
-    name: name,
-    email: email,
-    photoUrl: '',
-    about: "Hey there! I'm using Velora.",
-    isOnline: false,
-    lastSeen: DateTime.now(),
-    createdAt: DateTime.now(),
-    updatedAt: DateTime.now(),
-    phoneNumber: phone, // ✅ phone save 
-  );
-
-  await _userRepository.createUser(user);
-  await _remoteDataSource.sendEmailVerification();
-}
   @override
-  Future<void> sendPasswordResetEmail({
-    required String email,
-  }) async {
-    await _remoteDataSource.sendPasswordResetEmail(
-      email: email,
-    );
+  Future<void> sendPasswordResetEmail({required String email}) async {
+    await _remoteDataSource.sendPasswordResetEmail(email: email);
   }
-@override
-Future<void> sendEmailVerification() {
-  return _remoteDataSource.sendEmailVerification();
-}
 
-@override
-Future<void> reloadUser() {
-  return _remoteDataSource.reloadUser();
-}
+  @override
+  Future<void> sendEmailVerification() {
+    return _remoteDataSource.sendEmailVerification();
+  }
+
+  @override
+  Future<void> reloadUser() {
+    return _remoteDataSource.reloadUser();
+  }
+
   @override
   Future<void> signOut() async {
+    await NotificationService.instance.unregisterCurrentDevice();
     await _remoteDataSource.signOut();
   }
 }

@@ -1,16 +1,36 @@
 {
-  "hosting": {
-    "public": "build/web",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ],
-    "rewrites": [
-      {
-        "source": "**",
-        "destination": "/index.html"
-      }
-    ]
-  }
+    "hosting":  {
+                    "public":  "build/web",
+                    "ignore":  [
+                                   "firebase.json",
+                                   "**/.*",
+                                   "**/node_modules/**"
+                               ],
+                    "rewrites":  [
+                                     {
+                                         "source":  "**",
+                                         "destination":  "/index.html"
+                                     }
+                                 ]
+                },
+    "firestore":  {
+                      "rules":  "firestore.rules"
+                  },
+    "functions":  {
+                       "source": "functions"
+                   },
+    "emulators":  {
+                       "auth":  {
+                                    "port":  9099
+                                },
+                       "firestore":  {
+                                         "port":  8080
+                                     },
+                       "functions":  {
+                                         "port":  5001
+                                     },
+                       "ui":  {
+                                  "enabled":  false
+                              }
+                   }
 }

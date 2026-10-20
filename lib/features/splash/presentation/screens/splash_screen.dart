@@ -6,6 +6,7 @@ import '../../../../app/router/app_router.dart';
 import '../../../../app/theme/app_colors.dart';
 import '../../../../app/theme/app_spacing.dart';
 import '../../../../app/theme/app_typography.dart';
+import '../../../../core/services/notification_service.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -43,6 +44,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     final freshUser = FirebaseAuth.instance.currentUser;
 
     if (freshUser == null || !freshUser.emailVerified) {
+      await NotificationService.instance.unregisterCurrentDevice();
       await FirebaseAuth.instance.signOut();
       if (!mounted) return;
       context.go(AppRouter.login);

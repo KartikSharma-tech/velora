@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/app_router.dart';
+import '../../../../core/services/notification_service.dart';
 import '../providers/auth_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -46,7 +47,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     setState(() => _loading = true);
 
     try {
-      await ref.read(authRepositoryProvider).signIn(
+      await ref
+          .read(authRepositoryProvider)
+          .signIn(
             email: _emailController.text.trim(),
             password: _passwordController.text,
           );
@@ -56,14 +59,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       final user = FirebaseAuth.instance.currentUser;
 
       if (user != null && !user.emailVerified) {
+        await NotificationService.instance.unregisterCurrentDevice();
         await FirebaseAuth.instance.signOut();
         if (!mounted) return;
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text(
-              'Please verify your email before logging in.',
-            ),
+            content: const Text('Please verify your email before logging in.'),
             action: SnackBarAction(
               label: 'Resend',
               onPressed: () async {
@@ -80,7 +82,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         return;
       }
 
-context.go(AppRouter.splash);
+      context.go(AppRouter.splash);
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
       String message;
@@ -104,13 +106,14 @@ context.go(AppRouter.splash);
         default:
           message = e.message ?? 'Login failed.';
       }
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(message)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Something went wrong.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Something went wrong.')));
     }
 
     if (!mounted) return;
@@ -292,7 +295,9 @@ context.go(AppRouter.splash);
                   keyboardType: TextInputType.emailAddress,
                   textInputAction: TextInputAction.next,
                   validator: (v) {
-                    if (v == null || v.trim().isEmpty) return 'Enter your email';
+                    if (v == null || v.trim().isEmpty) {
+                      return 'Enter your email';
+                    }
                     final regex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
                     if (!regex.hasMatch(v.trim())) return 'Enter a valid email';
                     return null;
@@ -335,14 +340,18 @@ context.go(AppRouter.splash);
                     style: TextButton.styleFrom(
                       foregroundColor: _primary,
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 4, vertical: 8),
+                        horizontal: 4,
+                        vertical: 8,
+                      ),
                       minimumSize: Size.zero,
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
                     child: const Text(
                       'Forgot Password?',
-                      style:
-                          TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                 ),
@@ -389,8 +398,10 @@ context.go(AppRouter.splash);
         suffixIcon: suffixIcon,
         filled: true,
         fillColor: const Color(0xFF0F172A).withValues(alpha: 0.55),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 18,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
           borderSide: const BorderSide(color: _border, width: 1),
