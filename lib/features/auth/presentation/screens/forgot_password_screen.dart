@@ -19,8 +19,7 @@ class ForgotPasswordScreen extends ConsumerStatefulWidget {
       _ForgotPasswordScreenState();
 }
 
-class _ForgotPasswordScreenState
-    extends ConsumerState<ForgotPasswordScreen> {
+class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   final _formKey = GlobalKey<FormState>();
 
   final _emailController = TextEditingController();
@@ -43,16 +42,16 @@ class _ForgotPasswordScreenState
     });
 
     try {
-      await ref.read(authRepositoryProvider).sendPasswordResetEmail(
-            email: _emailController.text.trim(),
-          );
+      await ref
+          .read(authRepositoryProvider)
+          .sendPasswordResetEmail(email: _emailController.text.trim());
 
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Password reset email has been sent successfully.',
+            'If an account exists for this email, a reset link has been sent.',
           ),
         ),
       );
@@ -65,7 +64,8 @@ class _ForgotPasswordScreenState
 
       switch (e.code) {
         case 'user-not-found':
-          message = 'No account found with this email.';
+          message =
+              'If an account exists for this email, a reset link has been sent.';
           break;
 
         case 'invalid-email':
@@ -73,24 +73,18 @@ class _ForgotPasswordScreenState
           break;
 
         default:
-          message = e.message ?? 'Failed to send reset email.';
+          message = 'Unable to send a reset link right now. Try again later.';
       }
 
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      ).showSnackBar(SnackBar(content: Text(message)));
     } catch (_) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Something went wrong.',
-          ),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Something went wrong.')));
     }
 
     if (!mounted) return;
@@ -104,18 +98,13 @@ class _ForgotPasswordScreenState
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
+      appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
             padding: AppSpacing.screenPadding,
             child: ConstrainedBox(
-              constraints: const BoxConstraints(
-                maxWidth: 430,
-              ),
+              constraints: const BoxConstraints(maxWidth: 430),
               child: Form(
                 key: _formKey,
                 child: Column(
@@ -155,7 +144,8 @@ class _ForgotPasswordScreenState
                       ),
                     ),
 
-                    AppSpacing.gapXXXL,                    TextFormField(
+                    AppSpacing.gapXXXL,
+                    TextFormField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
                       textInputAction: TextInputAction.done,
@@ -165,9 +155,7 @@ class _ForgotPasswordScreenState
                         labelText: 'Email Address',
                         hintText: 'example@email.com',
                         prefixIcon: Icon(Icons.email_outlined),
-                        border: OutlineInputBorder(
-                          borderRadius: AppRadius.lg,
-                        ),
+                        border: OutlineInputBorder(borderRadius: AppRadius.lg),
                       ),
                     ),
 
@@ -177,8 +165,7 @@ class _ForgotPasswordScreenState
                       width: double.infinity,
                       height: 58,
                       child: FilledButton.icon(
-                        onPressed:
-                            _loading ? null : _sendResetLink,
+                        onPressed: _loading ? null : _sendResetLink,
                         icon: _loading
                             ? const SizedBox(
                                 width: 22,
@@ -188,13 +175,9 @@ class _ForgotPasswordScreenState
                                   color: Colors.white,
                                 ),
                               )
-                            : const Icon(
-                                Icons.send_rounded,
-                              ),
+                            : const Icon(Icons.send_rounded),
                         label: Text(
-                          _loading
-                              ? "Sending..."
-                              : "Send Reset Link",
+                          _loading ? "Sending..." : "Send Reset Link",
                         ),
                       ),
                     ),
@@ -208,8 +191,7 @@ class _ForgotPasswordScreenState
                         borderRadius: AppRadius.lg,
                       ),
                       child: Row(
-                        crossAxisAlignment:
-                            CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Icon(
                             Icons.info_outline_rounded,
@@ -236,17 +218,14 @@ class _ForgotPasswordScreenState
                     TextButton.icon(
                       onPressed: _loading
                           ? null
-                          : () => context.go(
-                                AppRouter.login,
-                              ),
+                          : () => context.go(AppRouter.login),
                       icon: const Icon(
                         Icons.arrow_back_ios_new_rounded,
                         size: 18,
                       ),
-                      label: const Text(
-                        "Back to Login",
-                      ),
-                    ),                  ],
+                      label: const Text("Back to Login"),
+                    ),
+                  ],
                 ),
               ),
             ),

@@ -97,7 +97,7 @@ class MessageModel {
       'receiverId': receiverId,
       'text': text,
       'type': type,
-      'timestamp': timestamp.toIso8601String(),
+      'timestamp': FieldValue.serverTimestamp(),
       'isSeen': isSeen,
       'isDelivered': isDelivered,
       'deliveredAt': deliveredAt?.toIso8601String(),

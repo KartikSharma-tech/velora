@@ -4,9 +4,53 @@ const { getMessaging } = require('firebase-admin/messaging');
 const { onDocumentCreated } = require('firebase-functions/v2/firestore');
 const { onRequest } = require('firebase-functions/v2/https');
 const { getAuth } = require('firebase-admin/auth');
+const { getAppCheck } = require('firebase-admin/app-check');
+const { defineSecret, defineString } = require('firebase-functions/params');
 const { logger } = require('firebase-functions');
+const crypto = require('node:crypto');
 
 initializeApp();
+
+const cloudinaryApiSecret = defineSecret('CLOUDINARY_API_SECRET');
+const cloudinaryApiKey = defineString('CLOUDINARY_API_KEY');
+const cloudinaryCloudName = defineString('CLOUDINARY_CLOUD_NAME');
+
+async function requireAppCheck(req, res) {
+  const appCheckToken = req.get('X-Firebase-AppCheck');
+  if (!appCheckToken) {
+    res.status(401).send('App verification required');
+    return false;
+  }
+  try {
+    await getAppCheck().verifyToken(appCheckToken);
+    return true;
+  } catch (error) {
+    res.status(401).send('Invalid app verification token');
+    return false;
+  }
+}
+
+async function consumeRateLimit(db, uid, bucket, perMinuteLimit, perHourLimit) {
+  const now = Date.now();
+  const rateRef = db.collection('_server_rate_limits')
+    .doc(bucket).collection('users').doc(uid);
+  return db.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(rateRef);
+    const data = snapshot.data() || {};
+    const minuteStart = typeof data.minuteStart === 'number' ? data.minuteStart : 0;
+    const hourStart = typeof data.hourStart === 'number' ? data.hourStart : 0;
+    const minuteCount = now - minuteStart < 60_000 ? (data.minuteCount || 0) : 0;
+    const hourCount = now - hourStart < 3_600_000 ? (data.hourCount || 0) : 0;
+    if (minuteCount >= perMinuteLimit || hourCount >= perHourLimit) return false;
+    transaction.set(rateRef, {
+      minuteStart: minuteCount === 0 ? now : minuteStart,
+      minuteCount: minuteCount + 1,
+      hourStart: hourCount === 0 ? now : hourStart,
+      hourCount: hourCount + 1,
+    });
+    return true;
+  });
+}
 
 exports.notifyChatRecipient = onDocumentCreated(
   {
@@ -91,6 +135,7 @@ exports.lookupVeloraContacts = onRequest(
       res.set('Allow', 'POST').status(405).send('Method not allowed');
       return;
     }
+    if (!await requireAppCheck(req, res)) return;
 
     const authorization = req.get('authorization') || '';
     const token = authorization.match(/^Bearer (.+)$/)?.[1];
@@ -121,22 +166,8 @@ exports.lookupVeloraContacts = onRequest(
     }
 
     const db = getFirestore();
-    const now = Date.now();
-    const rateRef = db.collection('_server_rate_limits')
-      .doc('contact_lookup').collection('users').doc(uid);
     try {
-      const allowed = await db.runTransaction(async (transaction) => {
-        const snapshot = await transaction.get(rateRef);
-        const data = snapshot.data() || {};
-        const startedAt = typeof data.startedAt === 'number' ? data.startedAt : 0;
-        const count = now - startedAt < 60_000 ? (data.count || 0) : 0;
-        if (count >= 20) return false;
-        transaction.set(rateRef, {
-          startedAt: count === 0 ? now : startedAt,
-          count: count + 1,
-        });
-        return true;
-      });
+      const allowed = await consumeRateLimit(db, uid, 'contact_lookup', 4, 20);
       if (!allowed) {
         res.status(429).send('Too many contact lookup requests');
         return;
@@ -181,6 +212,99 @@ exports.lookupVeloraContacts = onRequest(
     } catch (error) {
       logger.error('Contact lookup failed', { uid, error: error.message });
       res.status(500).send('Contact lookup failed');
+    }
+  },
+);
+
+// The Cloudinary API secret stays in Secret Manager. The client receives a
+// short-lived signature for a narrowly scoped, authenticated image upload.
+exports.createCloudinaryUploadSignature = onRequest(
+  {
+    region: 'us-central1',
+    cors: false,
+    secrets: [cloudinaryApiSecret],
+  },
+  async (req, res) => {
+    if (req.method !== 'POST') {
+      res.set('Allow', 'POST').status(405).send('Method not allowed');
+      return;
+    }
+    if (!await requireAppCheck(req, res)) return;
+
+    const token = (req.get('authorization') || '').match(/^Bearer (.+)$/)?.[1];
+    if (!token) {
+      res.status(401).send('Authentication required');
+      return;
+    }
+
+    let uid;
+    try {
+      uid = (await getAuth().verifyIdToken(token)).uid;
+    } catch (error) {
+      res.status(401).send('Invalid authentication token');
+      return;
+    }
+
+    const { roomId, messageId, profile } = req.body || {};
+    let folder;
+    let publicId;
+    if (profile === true && roomId == null && messageId == null) {
+      folder = 'profile_images';
+      publicId = `profile_${uid}_${crypto.randomUUID()}`;
+    } else if (profile !== true && typeof roomId === 'string' &&
+        /^[A-Za-z0-9_-]{1,256}$/.test(roomId) &&
+        typeof messageId === 'string' && /^[A-Za-z0-9_-]{1,100}$/.test(messageId)) {
+      const room = await getFirestore().collection('chat_rooms').doc(roomId).get();
+      if (!room.exists || !Array.isArray(room.data()?.participants) ||
+          !room.data().participants.includes(uid)) {
+        res.status(403).send('Chat room access denied');
+        return;
+      }
+      folder = `chat_images/${roomId}`;
+      publicId = messageId;
+    } else {
+      res.status(400).send('Invalid upload request');
+      return;
+    }
+
+    const db = getFirestore();
+    try {
+      const allowed = await consumeRateLimit(
+        db,
+        uid,
+        'cloudinary_upload_signature',
+        6,
+        50,
+      );
+      if (!allowed) {
+        res.status(429).send('Too many upload requests');
+        return;
+      }
+
+      const timestamp = Math.floor(Date.now() / 1000);
+      const params = {
+        folder,
+        public_id: publicId,
+        timestamp,
+        upload_preset: 'velora_mobile_signed',
+        overwrite: false,
+      };
+      const signatureBase = Object.keys(params).sort()
+        .map((key) => `${key}=${params[key]}`).join('&');
+      const signature = crypto.createHash('sha256')
+        .update(signatureBase + cloudinaryApiSecret.value())
+        .digest('hex');
+      res.status(200).json({
+        apiKey: cloudinaryApiKey.value(),
+        cloudName: cloudinaryCloudName.value(),
+        folder,
+        publicId,
+        timestamp,
+        signature,
+      });
+    } catch (error) {
+      logger.error('Cloudinary upload signature failed', { uid, error: error.message });
+      res.status(500).send('Upload authorization failed');
     }
   },
 );

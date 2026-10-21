@@ -16,6 +16,6 @@ class HiveBoxes {
   /// (theme mode, etc). Not for user/chat data — that lives
   /// in Firestore.
   static const String settings = 'settings_box';
-  static const String contactsCache = 'contacts_cache';
-  static const String contactsMeta = 'contacts_meta';
+  static const String contactsCache = 'contacts_cache_secure_v2';
+  static const String contactsMeta = 'contacts_meta_secure_v2';
 }

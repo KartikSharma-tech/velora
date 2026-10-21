@@ -29,8 +29,9 @@ async function signUp(email) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password: 'test-password-123', returnSecureToken: true }),
   });
-  assert.equal(response.status, 200, `Auth emulator signup failed: ${await response.text()}`);
-  return response.json();
+  const payload = await response.json();
+  assert.equal(response.status, 200, 'Auth emulator signup failed: ' + JSON.stringify(payload));
+  return payload;
 }
 
 async function request(path, { token, method = 'GET', body, updateFields = [] } = {}) {
@@ -60,6 +61,14 @@ async function create(path, token, data) {
   });
 }
 
+async function commit(token, writes) {
+  return fetch(`${firestoreBase}:commit`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ writes }),
+  });
+}
+
 async function expectStatus(response, expected, label) {
   const details = response.status === expected ? '' : `: ${await response.text()}`;
   assert.equal(response.status, expected, `${label} returned ${response.status}${details}`);
@@ -70,7 +79,8 @@ async function expectStatus(response, expected, label) {
   const alice = await signUp(`alice-${suffix}@example.test`);
   const bob = await signUp(`bob-${suffix}@example.test`);
   const hidden = await signUp(`hidden-${suffix}@example.test`);
-  const now = new Date();`r`n  const nowIso = now.toISOString();
+  const now = new Date();
+  const nowIso = now.toISOString();
 
   const publicProfile = (uid, discoverability = 'phone_number') => ({
     uid,
@@ -125,6 +135,46 @@ async function expectStatus(response, expected, label) {
     'owner creates hidden public profile',
   );
 
+  const requestId = `${alice.localId}_${bob.localId}`;
+  const chatRequest = {
+    id: requestId,
+    fromUserId: alice.localId,
+    fromUserName: 'Test User',
+    fromUserPhoto: '',
+    toUserId: bob.localId,
+    toUserName: 'Test User',
+    toUserPhoto: '',
+    message: 'Hi Bob',
+    status: 'pending',
+    createdAt: now,
+    respondedAt: null,
+  };
+  await expectStatus(
+    await create(`chat_requests/${requestId}`, alice.idToken, chatRequest),
+    200,
+    'sender creates a valid chat request',
+  );
+  await expectStatus(
+    await request(`chat_requests/${requestId}`, {
+      token: alice.idToken,
+      method: 'PATCH',
+      body: { status: 'accepted', respondedAt: now },
+      updateFields: ['status', 'respondedAt'],
+    }),
+    403,
+    'sender cannot accept their own chat request',
+  );
+  await expectStatus(
+    await request(`chat_requests/${requestId}`, {
+      token: bob.idToken,
+      method: 'PATCH',
+      body: { status: 'accepted', respondedAt: now },
+      updateFields: ['status', 'respondedAt'],
+    }),
+    200,
+    'recipient can accept a pending chat request',
+  );
+
   await expectStatus(
     await request(`users/${bob.localId}`, { token: alice.idToken }),
     403,
@@ -148,6 +198,7 @@ async function expectStatus(response, expected, label) {
       id: roomId,
       participants,
       lastMessage: '',
+      lastMessageId: '',
       lastMessageSenderId: '',
       lastMessageTime: now,
       lastMessageSeen: true,
@@ -182,13 +233,46 @@ async function expectStatus(response, expected, label) {
     isDeletedForEveryone: false,
     reactions: {},
   };
-  const messageCreateUrl = new URL(`${firestoreBase}/${messagePath}`);
-  messageCreateUrl.searchParams.set('documentId', messageId);
-  await expectStatus(await fetch(messageCreateUrl, {
+  const standaloneMessageUrl = new URL(`${firestoreBase}/${messagePath}`);
+  standaloneMessageUrl.searchParams.set('documentId', `standalone-${messageId}`);
+  await expectStatus(await fetch(standaloneMessageUrl, {
     method: 'POST',
     headers: { Authorization: `Bearer ${alice.idToken}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ fields: toFields(message) }),
-  }), 200, 'room participant creates a valid message');
+    body: JSON.stringify({ fields: toFields({
+      ...message,
+      id: `standalone-${messageId}`,
+      timestamp: now,
+    }) }),
+  }), 403, 'message cannot be created without its room preview update');
+
+  const messageFields = { ...message };
+  delete messageFields.timestamp;
+  const documentName = (path) =>
+    `projects/${projectId}/databases/(default)/documents/${path}`;
+  const messageDocument = documentName(`${messagePath}/${messageId}`);
+  const roomDocument = documentName(`chat_rooms/${roomId}`);
+  await expectStatus(await commit(alice.idToken, [
+    {
+      update: { name: messageDocument, fields: toFields(messageFields) },
+      updateMask: { fieldPaths: Object.keys(messageFields) },
+      updateTransforms: [{ fieldPath: 'timestamp', setToServerValue: 'REQUEST_TIME' }],
+    },
+    {
+      update: {
+        name: roomDocument,
+        fields: toFields({
+          lastMessage: message.text,
+          lastMessageId: messageId,
+          lastMessageSenderId: alice.localId,
+          lastMessageSeen: false,
+        }),
+      },
+      updateMask: {
+        fieldPaths: ['lastMessage', 'lastMessageId', 'lastMessageSenderId', 'lastMessageSeen'],
+      },
+      updateTransforms: [{ fieldPath: 'lastMessageTime', setToServerValue: 'REQUEST_TIME' }],
+    },
+  ]), 200, 'sender creates a message with its matching room preview atomically');
 
   await expectStatus(
     await request(`${messagePath}/${messageId}`, {
@@ -204,7 +288,7 @@ async function expectStatus(response, expected, label) {
     await request(`${messagePath}/${messageId}`, {
       token: bob.idToken,
       method: 'PATCH',
-      body: { isDelivered: true, deliveredAt: nowIso },
+      body: { isDelivered: true, deliveredAt: now },
       updateFields: ['isDelivered', 'deliveredAt'],
     }),
     200,
@@ -235,6 +319,25 @@ async function expectStatus(response, expected, label) {
     200,
     'original sender can delete message for everyone',
   );
+
+  await expectStatus(
+    await request(`users/${bob.localId}`, {
+      token: bob.idToken,
+      method: 'PATCH',
+      body: { blockedUsers: [alice.localId] },
+      updateFields: ['blockedUsers'],
+    }),
+    200,
+    'owner can update their block list',
+  );
+  const blockedMessageId = `blocked-${suffix}`;
+  const blockedMessageUrl = new URL(`${firestoreBase}/${messagePath}`);
+  blockedMessageUrl.searchParams.set('documentId', blockedMessageId);
+  await expectStatus(await fetch(blockedMessageUrl, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${alice.idToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fields: toFields({ ...message, id: blockedMessageId }) }),
+  }), 403, 'blocked sender cannot create a new message');
 
   console.log('Firestore security rules checks passed.');
 })().catch((error) => {

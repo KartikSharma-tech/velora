@@ -72,20 +72,24 @@ class FirestoreChatDataSource {
         .collection('messages')
         .doc(message.id);
 
-    await messageRef.set(message.toMap());
+    final batch = _firestore.batch();
+    batch.set(messageRef, message.toMap());
 
     final previewText = message.type == 'image' && message.text.isEmpty
-        ? '📷 Photo'
+        ? 'Photo'
         : message.text;
 
-    await _chatRooms.doc(message.chatRoomId).update({
+    final roomRef = _chatRooms.doc(message.chatRoomId);
+    batch.update(roomRef, {
       'lastMessage': previewText,
+      'lastMessageId': message.id,
       'lastMessageSenderId': message.senderId,
-      'lastMessageTime': Timestamp.fromDate(message.timestamp),
+      'lastMessageTime': FieldValue.serverTimestamp(),
       'lastMessageSeen': false,
-      // A new message makes a previously removed chat visible again.
-      'deletedBy': <String>[],
+      // A new message restores this room only for its sender if they hid it.
+      'deletedBy': FieldValue.arrayRemove([message.senderId]),
     });
+    await batch.commit();
   }
 
   // ==========================================================
@@ -98,7 +102,7 @@ class FirestoreChatDataSource {
   }) async {
     await _chatRooms.doc(roomId).collection('messages').doc(messageId).update({
       'isDelivered': true,
-      'deliveredAt': DateTime.now().toIso8601String(),
+      'deliveredAt': Timestamp.fromDate(DateTime.now()),
     });
   }
 
@@ -112,7 +116,7 @@ class FirestoreChatDataSource {
   }) async {
     await _chatRooms.doc(roomId).collection('messages').doc(messageId).update({
       'isSeen': true,
-      'seenAt': DateTime.now().toIso8601String(),
+      'seenAt': Timestamp.fromDate(DateTime.now()),
     });
   }
 

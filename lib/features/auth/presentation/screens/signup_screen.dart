@@ -53,13 +53,15 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       final rawPhone = _phoneController.text.trim();
       final normalizedPhone = PhoneNormalizer.normalize(rawPhone) ?? rawPhone;
 
-      await ref.read(authRepositoryProvider).signUp(
+      await ref
+          .read(authRepositoryProvider)
+          .signUp(
             name: _nameController.text.trim(),
             email: _emailController.text.trim(),
             password: _passwordController.text,
             phone: normalizedPhone,
           );
-// await ref.read(authRepositoryProvider).pfirebase_auth_datasource();
+      // await ref.read(authRepositoryProvider).pfirebase_auth_datasource();
 
       if (!mounted) return;
 
@@ -78,7 +80,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
       String message;
       switch (e.code) {
         case 'email-already-in-use':
-          message = 'An account already exists with this email.';
+          message = 'Unable to create an account with those details.';
           break;
         case 'invalid-email':
           message = 'Please enter a valid email address.';
@@ -93,13 +95,14 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
           message = e.message ?? 'Signup failed.';
       }
 
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(message)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Something went wrong.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Something went wrong.')));
     }
 
     if (!mounted) return;
@@ -234,8 +237,10 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                       borderRadius: AppRadius.lg,
                     ),
                     suffixIcon: IconButton(
-                      onPressed: () => setState(() =>
-                          _obscureConfirmPassword = !_obscureConfirmPassword),
+                      onPressed: () => setState(
+                        () =>
+                            _obscureConfirmPassword = !_obscureConfirmPassword,
+                      ),
                       icon: Icon(
                         _obscureConfirmPassword
                             ? Icons.visibility_off_outlined
@@ -277,8 +282,9 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                       ),
                     ),
                     TextButton(
-                      onPressed:
-                          _loading ? null : () => context.go(AppRouter.login),
+                      onPressed: _loading
+                          ? null
+                          : () => context.go(AppRouter.login),
                       child: const Text("Login"),
                     ),
                   ],

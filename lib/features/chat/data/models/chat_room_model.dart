@@ -4,6 +4,7 @@ class ChatRoomModel {
   final String id;
   final List<String> participants;
   final String lastMessage;
+  final String lastMessageId;
   final String lastMessageSenderId;
   final DateTime lastMessageTime;
   final bool lastMessageSeen;
@@ -22,6 +23,7 @@ class ChatRoomModel {
     required this.id,
     required this.participants,
     required this.lastMessage,
+    this.lastMessageId = '',
     required this.lastMessageSenderId,
     required this.lastMessageTime,
     required this.lastMessageSeen,
@@ -57,6 +59,7 @@ class ChatRoomModel {
       id: map['id'] ?? '',
       participants: List<String>.from(map['participants'] ?? []),
       lastMessage: map['lastMessage'] ?? '',
+      lastMessageId: map['lastMessageId'] ?? '',
       lastMessageSenderId: map['lastMessageSenderId'] ?? '',
       lastMessageTime: _readTimestamp(map['lastMessageTime']),
       lastMessageSeen: map['lastMessageSeen'] ?? false,
@@ -81,6 +84,7 @@ class ChatRoomModel {
       'id': id,
       'participants': participants,
       'lastMessage': lastMessage,
+      'lastMessageId': lastMessageId,
       'lastMessageSenderId': lastMessageSenderId,
       'lastMessageTime': Timestamp.fromDate(lastMessageTime),
       'lastMessageSeen': lastMessageSeen,
@@ -95,6 +99,7 @@ class ChatRoomModel {
     String? id,
     List<String>? participants,
     String? lastMessage,
+    String? lastMessageId,
     String? lastMessageSenderId,
     DateTime? lastMessageTime,
     bool? lastMessageSeen,
@@ -107,6 +112,7 @@ class ChatRoomModel {
       id: id ?? this.id,
       participants: participants ?? this.participants,
       lastMessage: lastMessage ?? this.lastMessage,
+      lastMessageId: lastMessageId ?? this.lastMessageId,
       lastMessageSenderId: lastMessageSenderId ?? this.lastMessageSenderId,
       lastMessageTime: lastMessageTime ?? this.lastMessageTime,
       lastMessageSeen: lastMessageSeen ?? this.lastMessageSeen,

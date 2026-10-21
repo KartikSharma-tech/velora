@@ -55,6 +55,32 @@ service cloud.firestore {
         && request.resource.data.uid == userId
         && request.resource.data.email == resource.data.email
         && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.name is string
+        && request.resource.data.name.size() <= 80
+        && request.resource.data.photoUrl is string
+        && request.resource.data.photoUrl.size() <= 2048
+        && request.resource.data.about is string
+        && request.resource.data.about.size() <= 500
+        && request.resource.data.isOnline is bool
+        && (request.resource.data.lastSeen == null
+          || request.resource.data.lastSeen is timestamp)
+        && request.resource.data.updatedAt is timestamp
+        && request.resource.data.blockedUsers is list
+        && request.resource.data.blockedUsers.size() <= 500
+        && request.resource.data.discoverability in [
+          'phone_number', 'username', 'hidden'
+        ]
+        && request.resource.data.whoCanMessage in [
+          'anyone', 'contacts', 'contacts_and_requests', 'nobody'
+        ]
+        && (!('username' in request.resource.data.keys())
+          || request.resource.data.username == null
+          || (request.resource.data.username is string
+            && request.resource.data.username.size() <= 30))
+        && (!('bio' in request.resource.data.keys())
+          || request.resource.data.bio == null
+          || (request.resource.data.bio is string
+            && request.resource.data.bio.size() <= 500))
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'name', 'photoUrl', 'about', 'isOnline', 'lastSeen', 'updatedAt',
           'username', 'bio', 'usernameChangeCount', 'usernameLastReset',
@@ -110,8 +136,8 @@ service cloud.firestore {
       }
 
       function hasChatWithProfileOwner() {
-        let forwardPath = /databases/$(database)/documents/chat_rooms/$(request.auth.uid)_$(userId);
-        let reversePath = /databases/$(database)/documents/chat_rooms/$(userId)_$(request.auth.uid);
+        let forwardPath = /databases/$(database)/documents/chat_rooms/$(request.auth.uid + '_' + userId);
+        let reversePath = /databases/$(database)/documents/chat_rooms/$(userId + '_' + request.auth.uid);
         return signedIn() && (
           (exists(forwardPath)
             && request.auth.uid in get(forwardPath).data.participants)
@@ -137,6 +163,33 @@ service cloud.firestore {
       allow delete: if isUser(userId);
     }
     match /chat_rooms/{roomId} {
+      function noParticipantHasBlocked(otherUserId) {
+        let ownProfile = get(
+          /databases/$(database)/documents/users/$(request.auth.uid)
+        ).data;
+        let otherProfile = get(
+          /databases/$(database)/documents/users/$(otherUserId)
+        ).data;
+        return !(otherUserId in ownProfile.get('blockedUsers', []))
+          && !(request.auth.uid in otherProfile.get('blockedUsers', []));
+      }
+
+      function latestMessageMatchesPreview() {
+        let messagePath = /databases/$(database)/documents/chat_rooms/$(roomId)/messages/$(request.resource.data.lastMessageId);
+        let latestMessage = getAfter(messagePath).data;
+        return existsAfter(messagePath)
+          && latestMessage.id == request.resource.data.lastMessageId
+          && latestMessage.chatRoomId == roomId
+          && latestMessage.senderId == request.auth.uid
+          && latestMessage.timestamp == request.time
+          && request.resource.data.lastMessageTime == request.time
+          && request.resource.data.lastMessage == (
+            latestMessage.type == 'image' && latestMessage.text == ''
+              ? 'Photo'
+              : latestMessage.text
+          );
+      }
+
       allow get: if signedIn()
         && (!exists(/databases/$(database)/documents/chat_rooms/$(roomId))
           || request.auth.uid in resource.data.participants);
@@ -145,11 +198,36 @@ service cloud.firestore {
         && request.auth.uid in resource.data.participants;
 
       allow create: if signedIn()
+        && request.resource.data.keys().hasOnly([
+          'id', 'participants', 'lastMessage', 'lastMessageSenderId',
+          'lastMessageId', 'lastMessageTime', 'lastMessageSeen', 'createdAt', 'pinnedBy',
+          'typingUsers', 'deletedBy'
+        ])
+        && request.resource.data.keys().hasAll([
+          'id', 'participants', 'lastMessage', 'lastMessageSenderId',
+          'lastMessageId', 'lastMessageTime', 'lastMessageSeen', 'createdAt', 'pinnedBy',
+          'typingUsers', 'deletedBy'
+        ])
         && request.resource.data.id == roomId
         && request.resource.data.participants is list
         && request.resource.data.participants.size() == 2
         && request.auth.uid in request.resource.data.participants
-        && request.resource.data.participants[0] != request.resource.data.participants[1];
+        && request.resource.data.participants[0] < request.resource.data.participants[1]
+        && roomId == request.resource.data.participants[0]
+          + '_' + request.resource.data.participants[1]
+        && request.resource.data.lastMessage == ''
+        && request.resource.data.lastMessageId == ''
+        && request.resource.data.lastMessageSenderId == ''
+        && request.resource.data.lastMessageSeen == true
+        && request.resource.data.lastMessageTime is timestamp
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.pinnedBy == []
+        && request.resource.data.typingUsers == []
+        && request.resource.data.deletedBy == []
+        && noParticipantHasBlocked(
+          request.resource.data.participants[0] == request.auth.uid
+            ? request.resource.data.participants[1]
+            : request.resource.data.participants[0]);
 
       allow update: if signedIn()
         && request.auth.uid in resource.data.participants
@@ -157,9 +235,53 @@ service cloud.firestore {
         && request.resource.data.participants == resource.data.participants
         && request.resource.data.createdAt == resource.data.createdAt
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'lastMessage', 'lastMessageSenderId', 'lastMessageTime',
+          'lastMessage', 'lastMessageId', 'lastMessageSenderId', 'lastMessageTime',
           'lastMessageSeen', 'pinnedBy', 'typingUsers', 'deletedBy'
-        ]);
+        ])
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny([
+            'lastMessage', 'lastMessageId', 'lastMessageSenderId', 'lastMessageTime'
+          ])
+          || (request.resource.data.diff(resource.data).affectedKeys().hasAll([
+              'lastMessage', 'lastMessageId', 'lastMessageSenderId', 'lastMessageTime'
+            ])
+            && request.resource.data.lastMessage is string
+            && request.resource.data.lastMessage.size() <= 5000
+            && request.resource.data.lastMessageId is string
+            && request.resource.data.lastMessageId.size() <= 150
+            && request.resource.data.lastMessageSenderId == request.auth.uid
+            && request.resource.data.lastMessageSenderId in resource.data.participants
+            && request.resource.data.lastMessageTime is timestamp
+            && latestMessageMatchesPreview()))
+        && (!request.resource.data.diff(resource.data).affectedKeys()
+            .hasAny(['lastMessageSeen'])
+          || (request.resource.data.lastMessageSeen == true
+            && resource.data.lastMessageSenderId != request.auth.uid)
+          || (request.resource.data.lastMessageSeen == false
+            && request.resource.data.lastMessageSenderId == request.auth.uid))
+        && request.resource.data.get('pinnedBy', []) is list
+        && request.resource.data.pinnedBy.size() <= 2
+        && request.resource.data.pinnedBy.toSet()
+          .difference(resource.data.get('pinnedBy', []).toSet())
+          .hasOnly([request.auth.uid])
+        && resource.data.get('pinnedBy', []).toSet()
+          .difference(request.resource.data.pinnedBy.toSet())
+          .hasOnly([request.auth.uid])
+        && request.resource.data.get('typingUsers', []) is list
+        && request.resource.data.typingUsers.size() <= 2
+        && request.resource.data.typingUsers.toSet()
+          .difference(resource.data.get('typingUsers', []).toSet())
+          .hasOnly([request.auth.uid])
+        && resource.data.get('typingUsers', []).toSet()
+          .difference(request.resource.data.typingUsers.toSet())
+          .hasOnly([request.auth.uid])
+        && request.resource.data.get('deletedBy', []) is list
+        && request.resource.data.deletedBy.size() <= 2
+        && request.resource.data.deletedBy.toSet()
+          .difference(resource.data.get('deletedBy', []).toSet())
+          .hasOnly([request.auth.uid])
+        && resource.data.get('deletedBy', []).toSet()
+          .difference(request.resource.data.deletedBy.toSet())
+          .hasOnly([request.auth.uid]);
 
       allow delete: if false;
 
@@ -198,7 +320,8 @@ service cloud.firestore {
           && request.resource.data.type in ['text', 'image']
           && request.resource.data.text is string
           && request.resource.data.text.size() <= 5000
-          && request.resource.data.timestamp is string
+          && request.resource.data.timestamp is timestamp
+          && request.resource.data.timestamp == request.time
           && request.resource.data.isSeen == false
           && request.resource.data.isDelivered == false
           && request.resource.data.get('deletedFor', []) is list
@@ -206,8 +329,28 @@ service cloud.firestore {
           && request.resource.data.get('isDeletedForEveryone', false) == false
           && request.resource.data.get('reactions', {}) is map
           && request.resource.data.reactions.size() == 0
-          && (request.resource.data.imageUrl == null
-            || request.resource.data.imageUrl is string);
+          && getAfter(
+            /databases/$(database)/documents/chat_rooms/$(roomId)
+          ).data.lastMessageId == messageId
+          && getAfter(
+            /databases/$(database)/documents/chat_rooms/$(roomId)
+          ).data.lastMessageSenderId == request.auth.uid
+          && (request.resource.data.get('replyToId', null) == null
+            || (request.resource.data.replyToId is string
+              && request.resource.data.replyToId.size() <= 150))
+          && (request.resource.data.get('replyToText', null) == null
+            || (request.resource.data.replyToText is string
+              && request.resource.data.replyToText.size() <= 500))
+          && (request.resource.data.get('replyToSenderName', null) == null
+            || (request.resource.data.replyToSenderName is string
+              && request.resource.data.replyToSenderName.size() <= 80))
+          && (request.resource.data.type == 'text'
+            ? request.resource.data.get('imageUrl', null) == null
+            : (request.resource.data.imageUrl is string
+              && request.resource.data.imageUrl.size() <= 2048
+              && request.resource.data.imageUrl.matches(
+                'https://res\\.cloudinary\\.com/wve0mvba/image/upload/.*')))
+          && noParticipantHasBlocked(request.resource.data.receiverId);
 
         allow update: if isRoomParticipant()
           && request.resource.data.id == resource.data.id
@@ -222,8 +365,12 @@ service cloud.firestore {
               ])
               && (!changedKeys().hasAny(['isDelivered'])
                 || request.resource.data.isDelivered == true)
-              && (!changedKeys().hasAny(['isSeen'])
-                || request.resource.data.isSeen == true))
+              && (!changedKeys().hasAny(['deliveredAt'])
+                || (request.resource.data.isDelivered == true
+                  && request.resource.data.deliveredAt is timestamp))
+              && (!changedKeys().hasAny(['isSeen', 'seenAt'])
+                || (request.resource.data.isSeen == true
+                  && request.resource.data.seenAt is timestamp)))
             // Each participant may hide a message for themselves only.
             || (changedKeys().hasOnly(['deletedFor'])
               && request.resource.data.get('deletedFor', []) is list
@@ -235,6 +382,7 @@ service cloud.firestore {
             // A participant may change only their own reaction.
             || (changedKeys().hasOnly(['reactions'])
               && request.resource.data.get('reactions', {}) is map
+              && request.resource.data.reactions.size() <= 2
               && resource.data.get('reactions', {}) is map
               && request.resource.data.reactions.diff(resource.data.get('reactions', {}))
                 .affectedKeys().hasOnly([request.auth.uid])
@@ -259,34 +407,92 @@ service cloud.firestore {
     }
 
     match /chat_requests/{requestId} {
+      function validRequestDocument() {
+        return request.resource.data.keys().hasOnly([
+            'id', 'fromUserId', 'fromUserName', 'fromUserPhoto', 'toUserId',
+            'toUserName', 'toUserPhoto', 'message', 'status', 'createdAt',
+            'respondedAt'
+          ])
+          && request.resource.data.keys().hasAll([
+            'id', 'fromUserId', 'fromUserName', 'fromUserPhoto', 'toUserId',
+            'toUserName', 'toUserPhoto', 'message', 'status', 'createdAt',
+            'respondedAt'
+          ])
+          && request.resource.data.id == requestId
+          && request.resource.data.fromUserId is string
+          && request.resource.data.fromUserName is string
+          && request.resource.data.fromUserName.size() <= 80
+          && request.resource.data.fromUserPhoto is string
+          && request.resource.data.fromUserPhoto.size() <= 2048
+          && request.resource.data.toUserId is string
+          && request.resource.data.toUserName is string
+          && request.resource.data.toUserName.size() <= 80
+          && request.resource.data.toUserPhoto is string
+          && request.resource.data.toUserPhoto.size() <= 2048
+          && request.resource.data.message is string
+          && request.resource.data.message.size() <= 300
+          && request.resource.data.status in ['pending', 'accepted', 'declined']
+          && request.resource.data.createdAt is timestamp
+          && (request.resource.data.respondedAt == null
+            || request.resource.data.respondedAt is timestamp);
+      }
+
+      function requestNamesMatchProfiles() {
+        let sender = get(
+          /databases/$(database)/documents/public_profiles/$(request.resource.data.fromUserId)
+        ).data;
+        let recipient = get(
+          /databases/$(database)/documents/public_profiles/$(request.resource.data.toUserId)
+        ).data;
+        return request.resource.data.fromUserName == sender.name
+          && request.resource.data.fromUserPhoto == sender.photoUrl
+          && request.resource.data.toUserName == recipient.name
+          && request.resource.data.toUserPhoto == recipient.photoUrl;
+      }
+
       allow read: if signedIn()
         && (resource.data.fromUserId == request.auth.uid
           || resource.data.toUserId == request.auth.uid);
 
       allow create: if signedIn()
+        && validRequestDocument()
         && request.resource.data.fromUserId == request.auth.uid
         && request.resource.data.toUserId != request.auth.uid
         && requestId == request.auth.uid + '_' + request.resource.data.toUserId
-        && request.resource.data.status == 'pending';
+        && requestNamesMatchProfiles()
+        && request.resource.data.status == 'pending'
+        && request.resource.data.respondedAt == null
+        && get(/databases/$(database)/documents/users/$(request.auth.uid))
+          .data.get('blockedUsers', []).hasAny([request.resource.data.toUserId]) == false
+        && get(/databases/$(database)/documents/users/$(request.resource.data.toUserId))
+          .data.get('blockedUsers', []).hasAny([request.auth.uid]) == false
+        && get(/databases/$(database)/documents/users/$(request.resource.data.toUserId))
+          .data.get('whoCanMessage', 'contacts_and_requests') == 'contacts_and_requests';
 
       allow update: if signedIn()
         && request.resource.data.fromUserId == resource.data.fromUserId
         && request.resource.data.toUserId == resource.data.toUserId
         && (
           (resource.data.toUserId == request.auth.uid
+            && resource.data.status == 'pending'
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
               'status', 'respondedAt'
             ])
-            && request.resource.data.status in ['accepted', 'declined'])
+            && request.resource.data.status in ['accepted', 'declined']
+            && request.resource.data.respondedAt is timestamp)
           || (resource.data.fromUserId == request.auth.uid
             && resource.data.status == 'declined'
+            && validRequestDocument()
             && request.resource.data.status == 'pending'
+            && request.resource.data.respondedAt == null
+            && request.resource.data.createdAt is timestamp
             && requestId == request.auth.uid + '_' + request.resource.data.toUserId
-            && request.resource.data.keys().hasOnly([
-              'id', 'fromUserId', 'fromUserName', 'fromUserPhoto', 'toUserId',
-              'toUserName', 'toUserPhoto', 'message', 'status', 'createdAt',
-              'respondedAt'
-            ]))
+            && request.resource.data.toUserId == resource.data.toUserId
+            && requestNamesMatchProfiles()
+            && get(/databases/$(database)/documents/users/$(request.resource.data.toUserId))
+              .data.get('blockedUsers', []).hasAny([request.auth.uid]) == false
+            && get(/databases/$(database)/documents/users/$(request.resource.data.toUserId))
+              .data.get('whoCanMessage', 'contacts_and_requests') == 'contacts_and_requests')
         );
 
       allow delete: if false;

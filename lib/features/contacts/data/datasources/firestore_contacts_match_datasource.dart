@@ -1,21 +1,24 @@
 import 'dart:convert';
 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:http/http.dart' as http;
 
 import '../../domain/entities/velora_contact.dart';
 
 class FirestoreContactsMatchDataSource {
   FirestoreContactsMatchDataSource({FirebaseAuth? auth, http.Client? client})
-      : _auth = auth ?? FirebaseAuth.instance,
-        _client = client ?? http.Client();
+    : _auth = auth ?? FirebaseAuth.instance,
+      _client = client ?? http.Client();
 
   final FirebaseAuth _auth;
   final http.Client _client;
 
   static const int _batchSize = 250;
-  static final Uri _lookupUri = Uri.parse(
-    'https://us-central1-velora-f0bb0.cloudfunctions.net/lookupVeloraContacts',
+  Uri get _lookupUri => Uri.https(
+    'us-central1-${Firebase.app().options.projectId}.cloudfunctions.net',
+    '/lookupVeloraContacts',
   );
 
   /// Contact numbers are matched on the server; private user documents are not
@@ -30,7 +33,10 @@ class FirestoreContactsMatchDataSource {
       throw StateError('Sign in with a verified account to find contacts.');
     }
     final idToken = await user.getIdToken();
-    if (idToken == null) throw StateError('Unable to verify your account.');
+    final appCheckToken = await FirebaseAppCheck.instance.getToken();
+    if (appCheckToken == null) {
+      throw StateError('Unable to verify this app and account.');
+    }
 
     final phones = normalizedPhones.toSet().toList();
     final result = <String, VeloraContact>{};
@@ -42,6 +48,7 @@ class FirestoreContactsMatchDataSource {
             headers: {
               'Authorization': 'Bearer $idToken',
               'Content-Type': 'application/json',
+              'X-Firebase-AppCheck': appCheckToken,
             },
             body: jsonEncode({'phones': batch}),
           )

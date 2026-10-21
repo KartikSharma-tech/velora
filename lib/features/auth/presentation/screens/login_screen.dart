@@ -91,14 +91,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           message = 'Invalid email address.';
           break;
         case 'user-not-found':
-          message = 'No account found with this email.';
-          break;
         case 'wrong-password':
         case 'invalid-credential':
-          message = 'Incorrect email or password.';
-          break;
         case 'user-disabled':
-          message = 'This account has been disabled.';
+          message = 'Unable to sign in with those credentials.';
           break;
         case 'too-many-requests':
           message = 'Too many attempts. Try again later.';

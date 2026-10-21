@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // START: FlutterFire Configuration
@@ -5,6 +7,13 @@ plugins {
     // END: FlutterFire Configuration
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+val releaseKeyPropertiesFile = rootProject.file("key.properties")
+val releaseKeyProperties = Properties().apply {
+    if (releaseKeyPropertiesFile.exists()) {
+        releaseKeyPropertiesFile.inputStream().use(::load)
+    }
 }
 
 android {
@@ -31,9 +40,28 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            isDebuggable = false
+            if (releaseKeyPropertiesFile.exists()) {
+                signingConfigs.create("release") {
+                    keyAlias = releaseKeyProperties.getProperty("keyAlias")
+                        ?: throw GradleException("keyAlias is missing from android/key.properties")
+                    keyPassword = releaseKeyProperties.getProperty("keyPassword")
+                        ?: throw GradleException("keyPassword is missing from android/key.properties")
+                    storeFile = rootProject.file(
+                        releaseKeyProperties.getProperty("storeFile")
+                            ?: throw GradleException("storeFile is missing from android/key.properties"),
+                    )
+                    storePassword = releaseKeyProperties.getProperty("storePassword")
+                        ?: throw GradleException("storePassword is missing from android/key.properties")
+                }
+                signingConfig = signingConfigs.getByName("release")
+            } else if (providers.gradleProperty("allowDebugReleaseSigning").orNull == "true") {
+                // For local sideload testing only. Never distribute this APK.
+                signingConfig = signingConfigs.getByName("debug")
+            } else {
+                // Produce an unsigned artifact until a private release key is configured.
+                signingConfig = null
+            }
         }
     }
 }
