@@ -51,10 +51,22 @@ Future<void> bootstrap() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    if (!kIsWeb &&
-        (defaultTargetPlatform == TargetPlatform.android ||
-            defaultTargetPlatform == TargetPlatform.iOS ||
-            defaultTargetPlatform == TargetPlatform.macOS)) {
+    if (kIsWeb) {
+      const webAppCheckSiteKey = String.fromEnvironment(
+        'VELORA_APP_CHECK_WEB_SITE_KEY',
+      );
+      if (webAppCheckSiteKey.isNotEmpty) {
+        try {
+          await FirebaseAppCheck.instance.activate(
+            providerWeb: ReCaptchaV3Provider(webAppCheckSiteKey),
+          );
+        } catch (e, st) {
+          debugPrint('Web App Check initialization failed: $e\n$st');
+        }
+      }
+    } else if (defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.iOS ||
+        defaultTargetPlatform == TargetPlatform.macOS) {
       try {
         await FirebaseAppCheck.instance.activate(
           providerAndroid: kDebugMode

@@ -275,6 +275,17 @@ async function expectStatus(response, expected, label) {
   ]), 200, 'sender creates a message with its matching room preview atomically');
 
   await expectStatus(
+    await request(`chat_rooms/${roomId}`, {
+      token: bob.idToken,
+      method: 'PATCH',
+      body: { lastMessage: 'forged preview' },
+      updateFields: ['lastMessage'],
+    }),
+    403,
+    'participant cannot forge a room preview without a matching message',
+  );
+
+  await expectStatus(
     await request(`${messagePath}/${messageId}`, {
       token: bob.idToken,
       method: 'PATCH',

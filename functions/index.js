@@ -255,8 +255,24 @@ exports.createCloudinaryUploadSignature = onRequest(
         /^[A-Za-z0-9_-]{1,256}$/.test(roomId) &&
         typeof messageId === 'string' && /^[A-Za-z0-9_-]{1,100}$/.test(messageId)) {
       const room = await getFirestore().collection('chat_rooms').doc(roomId).get();
-      if (!room.exists || !Array.isArray(room.data()?.participants) ||
-          !room.data().participants.includes(uid)) {
+      const participants = room.data()?.participants;
+      if (!room.exists || !Array.isArray(participants) ||
+          !participants.includes(uid) || participants.length !== 2) {
+        res.status(403).send('Chat room access denied');
+        return;
+      }
+      const otherUserId = participants.find((participant) => participant !== uid);
+      if (typeof otherUserId !== 'string') {
+        res.status(403).send('Chat room access denied');
+        return;
+      }
+      const [callerProfile, otherProfile] = await Promise.all([
+        getFirestore().collection('users').doc(uid).get(),
+        getFirestore().collection('users').doc(otherUserId).get(),
+      ]);
+      if (!callerProfile.exists || !otherProfile.exists ||
+          callerProfile.data().blockedUsers?.includes(otherUserId) ||
+          otherProfile.data().blockedUsers?.includes(uid)) {
         res.status(403).send('Chat room access denied');
         return;
       }

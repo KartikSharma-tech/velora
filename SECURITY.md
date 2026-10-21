@@ -12,6 +12,8 @@ signature HTTP functions reject requests without a valid App Check token.
 1. In Firebase Console, register the Android app using the final Android
    application ID and configure Play Integrity. Register Apple apps before
    shipping iOS/macOS builds.
+   For Web, register the Firebase Web app with reCAPTCHA v3 and build with
+   `--dart-define=VELORA_APP_CHECK_WEB_SITE_KEY=<site-key>`.
 2. Run a debug build once, copy its App Check debug token from the device logs,
    and register that token under Firebase Console → App Check → Manage debug
    tokens. Never ship a debug token in the app.
@@ -55,7 +57,14 @@ Do not place the Cloudinary API secret in Dart code, Firebase client config,
 ## Android release signing
 
 Release builds no longer use the Android debug key by default. Create an upload
-keystore outside source control, then create `android/key.properties` with:
+keystore outside source control with the interactive prompt (do not add
+passwords to this command):
+
+```powershell
+keytool -genkeypair -v -keystore android/upload-keystore.jks -keyalg RSA -keysize 2048 -validity 10000 -alias velora
+```
+
+Then create `android/key.properties` with:
 
 ```properties
 storeFile=upload-keystore.jks
@@ -68,7 +77,9 @@ keyPassword=YOUR_KEY_PASSWORD
 and passwords securely; losing them can prevent updates to an already published
 app. Without this file, Gradle produces an unsigned release artifact. The
 `allowDebugReleaseSigning=true` Gradle property is only for local sideload
-testing and must never be used for distribution.
+testing and must never be used for distribution. To create that local test APK,
+run `cd android; .\gradlew.bat assembleRelease -PallowDebugReleaseSigning=true`;
+it is written to `build/app/outputs/apk/release/app-release.apk`.
 
 ## Remaining release review
 
