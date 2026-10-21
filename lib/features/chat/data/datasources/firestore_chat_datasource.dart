@@ -183,7 +183,7 @@ class FirestoreChatDataSource {
             );
 
             final userDoc = await _firestore
-                .collection('users')
+                .collection('public_profiles')
                 .doc(otherUserId)
                 .get();
 

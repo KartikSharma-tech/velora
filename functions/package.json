@@ -6,7 +6,8 @@
     "node": "20"
   },
   "scripts": {
-    "lint": "node --check index.js"
+    "lint": "node --check index.js",
+    "test:security": "node security_rules_test.js"
   },
   "dependencies": {
     "firebase-admin": "^13.4.0",

@@ -45,6 +45,15 @@ final appUserProvider = StreamProvider<UserModel?>((ref) {
         .collection('users')
         .doc(user.uid)
         .snapshots()
-        .map((doc) => doc.exists ? UserModel.fromMap(doc.data()!) : null);
+        .asyncMap((doc) async {
+          if (!doc.exists) return null;
+          final profile = UserModel.fromMap(doc.data()!);
+          final publicRef = FirebaseFirestore.instance
+              .collection('public_profiles')
+              .doc(user.uid);
+          final publicDoc = await publicRef.get();
+          if (!publicDoc.exists) await publicRef.set(profile.toPublicMap());
+          return profile;
+        });
   });
 });

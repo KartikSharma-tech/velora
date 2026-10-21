@@ -126,7 +126,7 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
 
     try {
       final userDoc = await FirebaseFirestore.instance
-          .collection('users')
+          .collection('public_profiles')
           .doc(contact.uid!)
           .get();
 

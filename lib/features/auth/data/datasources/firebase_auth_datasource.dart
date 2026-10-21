@@ -32,7 +32,7 @@ class FirebaseAuthDataSource {
     try {
       return await _firebaseAuth.signInWithEmailAndPassword(
         email: email.trim(),
-        password: password.trim(),
+        password: password,
       );
     } on FirebaseAuthException {
       rethrow;
@@ -52,7 +52,7 @@ class FirebaseAuthDataSource {
     try {
       return await _firebaseAuth.createUserWithEmailAndPassword(
         email: email.trim(),
-        password: password.trim(),
+        password: password,
       );
     } on FirebaseAuthException {
       rethrow;

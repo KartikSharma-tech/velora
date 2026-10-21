@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../models/user_model.dart';
 
@@ -14,12 +15,18 @@ class FirestoreUserDataSource {
   CollectionReference<Map<String, dynamic>> get _users =>
       _firestore.collection(_collection);
 
+  CollectionReference<Map<String, dynamic>> get _publicProfiles =>
+      _firestore.collection('public_profiles');
+
   // ==========================================================
   // Create User
   // ==========================================================
 
   Future<void> createUser(UserModel user) async {
-    await _users.doc(user.uid).set(user.toMap());
+    final batch = _firestore.batch();
+    batch.set(_users.doc(user.uid), user.toMap());
+    batch.set(_publicProfiles.doc(user.uid), user.toPublicMap());
+    await batch.commit();
   }
 
   // ==========================================================
@@ -27,7 +34,10 @@ class FirestoreUserDataSource {
   // ==========================================================
 
   Future<UserModel?> getUser(String uid) async {
-    final doc = await _users.doc(uid).get();
+    final reference = FirebaseAuth.instance.currentUser?.uid == uid
+        ? _users.doc(uid)
+        : _publicProfiles.doc(uid);
+    final doc = await reference.get();
 
     if (!doc.exists) return null;
 
@@ -39,7 +49,10 @@ class FirestoreUserDataSource {
   // ==========================================================
 
   Stream<UserModel?> userStream(String uid) {
-    return _users.doc(uid).snapshots().map((snapshot) {
+    final reference = FirebaseAuth.instance.currentUser?.uid == uid
+        ? _users.doc(uid)
+        : _publicProfiles.doc(uid);
+    return reference.snapshots().map((snapshot) {
       if (!snapshot.exists) return null;
 
       return UserModel.fromMap(snapshot.data()!);
@@ -51,8 +64,8 @@ class FirestoreUserDataSource {
   // ==========================================================
 
   Stream<List<UserModel>> getAllUsers() {
-    return _users
-        .orderBy('name')
+    return _publicProfiles
+        .where('discoverability', whereIn: ['phone_number', 'username'])
         .snapshots()
         .map(
           (snapshot) => snapshot.docs
@@ -64,7 +77,8 @@ class FirestoreUserDataSource {
   Future<List<UserModel>> searchUsersByUsername(String query) async {
   if (query.trim().isEmpty) return [];
 
-  final snapshot = await _users
+  final snapshot = await _publicProfiles
+      .where('discoverability', isEqualTo: 'username')
       .where('username', isGreaterThanOrEqualTo: query.toLowerCase())
       .where('username',
           isLessThanOrEqualTo: '${query.toLowerCase()}\uf8ff')
@@ -80,7 +94,7 @@ class FirestoreUserDataSource {
   // Update Profile
   // ==========================================================
 Future<bool> isUsernameTaken(String username) async {
-  final snapshot = await _users
+  final snapshot = await _publicProfiles
       .where('username', isEqualTo: username)
       .limit(1)
       .get();
@@ -105,13 +119,17 @@ if (username != currentUsername) {
     throw Exception('Username already taken');
   }
 }
-    await _users.doc(uid).update({
-  'name': name,
-  'about': about,
-  'photoUrl': photoUrl,
-  'username': username,
-  'updatedAt': FieldValue.serverTimestamp(),
-});
+    final profileUpdate = {
+      'name': name,
+      'about': about,
+      'photoUrl': photoUrl,
+      'username': username,
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+    final batch = _firestore.batch();
+    batch.update(_users.doc(uid), profileUpdate);
+    batch.update(_publicProfiles.doc(uid), profileUpdate);
+    await batch.commit();
   }
 
   // ==========================================================
@@ -122,11 +140,15 @@ if (username != currentUsername) {
     required String uid,
     required bool isOnline,
   }) async {
-    await _users.doc(uid).update({
+    final presenceUpdate = {
       'isOnline': isOnline,
       'lastSeen': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
-    });
+    };
+    final batch = _firestore.batch();
+    batch.update(_users.doc(uid), presenceUpdate);
+    batch.update(_publicProfiles.doc(uid), presenceUpdate);
+    await batch.commit();
   }
 
   // ==========================================================
@@ -134,10 +156,14 @@ if (username != currentUsername) {
   // ==========================================================
 
   Future<void> updateLastSeen(String uid) async {
-    await _users.doc(uid).update({
+    final lastSeenUpdate = {
       'lastSeen': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
-    });
+    };
+    final batch = _firestore.batch();
+    batch.update(_users.doc(uid), lastSeenUpdate);
+    batch.update(_publicProfiles.doc(uid), lastSeenUpdate);
+    await batch.commit();
   }
 
   // ==========================================================
@@ -145,7 +171,10 @@ if (username != currentUsername) {
   // ==========================================================
 
   Future<void> deleteUser(String uid) async {
-    await _users.doc(uid).delete();
+    final batch = _firestore.batch();
+    batch.delete(_users.doc(uid));
+    batch.delete(_publicProfiles.doc(uid));
+    await batch.commit();
   }
 
   // ==========================================================

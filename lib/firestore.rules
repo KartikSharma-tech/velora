@@ -10,11 +10,46 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      // Preserve current user search and contact discovery behavior.
-      allow read: if signedIn();
+      function validPrivateProfile() {
+        return request.resource.data.keys().hasOnly([
+            'uid', 'name', 'email', 'photoUrl', 'about', 'isOnline', 'lastSeen',
+            'createdAt', 'updatedAt', 'blockedUsers', 'phoneNumber', 'username',
+            'bio', 'usernameChangeCount', 'usernameLastReset', 'discoverability',
+            'whoCanMessage'
+          ])
+          && request.resource.data.keys().hasAll([
+            'uid', 'name', 'email', 'photoUrl', 'about', 'isOnline', 'lastSeen',
+            'createdAt', 'updatedAt', 'blockedUsers', 'phoneNumber',
+            'discoverability', 'whoCanMessage'
+          ])
+          && request.resource.data.uid == userId
+          && request.resource.data.name is string
+          && request.resource.data.name.size() <= 80
+          && request.resource.data.email is string
+          && request.resource.data.email.size() <= 254
+          && request.resource.data.photoUrl is string
+          && request.resource.data.photoUrl.size() <= 2048
+          && request.resource.data.about is string
+          && request.resource.data.about.size() <= 500
+          && request.resource.data.isOnline is bool
+          && (request.resource.data.lastSeen == null
+            || request.resource.data.lastSeen is timestamp)
+          && request.resource.data.createdAt is timestamp
+          && request.resource.data.updatedAt is timestamp
+          && request.resource.data.blockedUsers is list
+          && request.resource.data.blockedUsers.size() <= 500
+          && request.resource.data.phoneNumber is string
+          && request.resource.data.phoneNumber.size() <= 20
+          && request.resource.data.discoverability in [
+            'phone_number', 'username', 'hidden'
+          ]
+          && request.resource.data.whoCanMessage in [
+            'anyone', 'contacts', 'contacts_and_requests', 'nobody'
+          ];
+      }
 
-      allow create: if isUser(userId)
-        && request.resource.data.uid == userId;
+      allow read: if isUser(userId);
+      allow create: if isUser(userId) && validPrivateProfile();
 
       allow update: if isUser(userId)
         && request.resource.data.uid == userId
@@ -34,6 +69,73 @@ service cloud.firestore {
       }
     }
 
+    // Public user cards contain no email address or phone number.
+    match /public_profiles/{userId} {
+      function validPublicProfile() {
+        return request.resource.data.keys().hasOnly([
+            'uid', 'name', 'photoUrl', 'about', 'isOnline', 'lastSeen',
+            'createdAt', 'updatedAt', 'username', 'bio', 'discoverability',
+            'whoCanMessage'
+          ])
+          && request.resource.data.keys().hasAll([
+            'uid', 'name', 'photoUrl', 'about', 'isOnline', 'lastSeen',
+            'createdAt', 'updatedAt', 'discoverability', 'whoCanMessage'
+          ])
+          && request.resource.data.uid == userId
+          && request.resource.data.name is string
+          && request.resource.data.name.size() <= 80
+          && request.resource.data.photoUrl is string
+          && request.resource.data.photoUrl.size() <= 2048
+          && request.resource.data.about is string
+          && request.resource.data.about.size() <= 500
+          && request.resource.data.isOnline is bool
+          && (request.resource.data.lastSeen == null
+            || request.resource.data.lastSeen is timestamp)
+          && request.resource.data.createdAt is timestamp
+          && request.resource.data.updatedAt is timestamp
+          && request.resource.data.discoverability in [
+            'phone_number', 'username', 'hidden'
+          ]
+          && request.resource.data.whoCanMessage in [
+            'anyone', 'contacts', 'contacts_and_requests', 'nobody'
+          ]
+          && (!('username' in request.resource.data.keys())
+            || request.resource.data.username == null
+            || (request.resource.data.username is string
+              && request.resource.data.username.size() <= 30))
+          && (!('bio' in request.resource.data.keys())
+            || request.resource.data.bio == null
+            || (request.resource.data.bio is string
+              && request.resource.data.bio.size() <= 500));
+      }
+
+      function hasChatWithProfileOwner() {
+        let forwardPath = /databases/$(database)/documents/chat_rooms/$(request.auth.uid)_$(userId);
+        let reversePath = /databases/$(database)/documents/chat_rooms/$(userId)_$(request.auth.uid);
+        return signedIn() && (
+          (exists(forwardPath)
+            && request.auth.uid in get(forwardPath).data.participants)
+          || (exists(reversePath)
+            && request.auth.uid in get(reversePath).data.participants)
+        );
+      }
+
+      allow get: if isUser(userId)
+        || (signedIn() && resource.data.discoverability in ['phone_number', 'username'])
+        || hasChatWithProfileOwner();
+      allow list: if signedIn()
+        && resource.data.discoverability in ['phone_number', 'username'];
+      allow create: if isUser(userId) && validPublicProfile();
+      allow update: if isUser(userId)
+        && validPublicProfile()
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'name', 'photoUrl', 'about', 'isOnline', 'lastSeen', 'updatedAt',
+          'username', 'bio', 'discoverability', 'whoCanMessage'
+        ]);
+      allow delete: if isUser(userId);
+    }
     match /chat_rooms/{roomId} {
       allow get: if signedIn()
         && (!exists(/databases/$(database)/documents/chat_rooms/$(roomId))
@@ -71,23 +173,86 @@ service cloud.firestore {
 
         allow read: if isRoomParticipant();
 
+        function roomParticipants() {
+          return get(
+            /databases/$(database)/documents/chat_rooms/$(roomId)
+          ).data.participants;
+        }
+
+        function changedKeys() {
+          return request.resource.data.diff(resource.data).affectedKeys();
+        }
+
         allow create: if isRoomParticipant()
+          && request.resource.data.keys().hasOnly([
+            'id', 'chatRoomId', 'senderId', 'receiverId', 'text', 'type',
+            'timestamp', 'isSeen', 'isDelivered', 'deliveredAt', 'seenAt',
+            'imageUrl', 'replyToId', 'replyToText', 'replyToSenderName',
+            'deletedFor', 'isDeletedForEveryone', 'reactions'
+          ])
           && request.resource.data.id == messageId
           && request.resource.data.chatRoomId == roomId
           && request.resource.data.senderId == request.auth.uid
-          && request.resource.data.receiverId in get(
-            /databases/$(database)/documents/chat_rooms/$(roomId)
-          ).data.participants;
+          && request.resource.data.receiverId != request.auth.uid
+          && request.resource.data.receiverId in roomParticipants()
+          && request.resource.data.type in ['text', 'image']
+          && request.resource.data.text is string
+          && request.resource.data.text.size() <= 5000
+          && request.resource.data.timestamp is string
+          && request.resource.data.isSeen == false
+          && request.resource.data.isDelivered == false
+          && request.resource.data.get('deletedFor', []) is list
+          && request.resource.data.deletedFor.size() == 0
+          && request.resource.data.get('isDeletedForEveryone', false) == false
+          && request.resource.data.get('reactions', {}) is map
+          && request.resource.data.reactions.size() == 0
+          && (request.resource.data.imageUrl == null
+            || request.resource.data.imageUrl is string);
 
         allow update: if isRoomParticipant()
           && request.resource.data.id == resource.data.id
           && request.resource.data.chatRoomId == roomId
           && request.resource.data.senderId == resource.data.senderId
           && request.resource.data.receiverId == resource.data.receiverId
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-            'isDelivered', 'deliveredAt', 'isSeen', 'seenAt', 'deletedFor',
-            'isDeletedForEveryone', 'text', 'imageUrl', 'reactions'
-          ]);
+          && (
+            // Only the recipient may advance delivery and read receipts.
+            (request.auth.uid == resource.data.receiverId
+              && changedKeys().hasOnly([
+                'isDelivered', 'deliveredAt', 'isSeen', 'seenAt'
+              ])
+              && (!changedKeys().hasAny(['isDelivered'])
+                || request.resource.data.isDelivered == true)
+              && (!changedKeys().hasAny(['isSeen'])
+                || request.resource.data.isSeen == true))
+            // Each participant may hide a message for themselves only.
+            || (changedKeys().hasOnly(['deletedFor'])
+              && request.resource.data.get('deletedFor', []) is list
+              && resource.data.get('deletedFor', []) is list
+              && request.resource.data.deletedFor.hasAll(resource.data.get('deletedFor', []))
+              && request.resource.data.get('deletedFor', []).toSet()
+                .difference(resource.data.get('deletedFor', []).toSet())
+                .hasOnly([request.auth.uid]))
+            // A participant may change only their own reaction.
+            || (changedKeys().hasOnly(['reactions'])
+              && request.resource.data.get('reactions', {}) is map
+              && resource.data.get('reactions', {}) is map
+              && request.resource.data.reactions.diff(resource.data.get('reactions', {}))
+                .affectedKeys().hasOnly([request.auth.uid])
+              && (!(request.auth.uid in request.resource.data.reactions.keys())
+                || (request.resource.data.reactions[request.auth.uid] is string
+                  && request.resource.data.reactions[request.auth.uid].size() <= 8)))
+            // Only the original sender may delete the message for everyone.
+            || (request.auth.uid == resource.data.senderId
+              && resource.data.get('isDeletedForEveryone', false) == false
+              && changedKeys().hasOnly([
+                'isDeletedForEveryone', 'text', 'imageUrl', 'reactions'
+              ])
+              && request.resource.data.isDeletedForEveryone == true
+              && request.resource.data.text == ''
+              && request.resource.data.imageUrl == null
+              && request.resource.data.get('reactions', {}) is map
+              && request.resource.data.reactions.size() == 0)
+          );
 
         allow delete: if false;
       }

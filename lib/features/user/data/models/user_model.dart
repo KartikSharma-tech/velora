@@ -111,6 +111,23 @@ class UserModel {
     };
   }
 
+  /// Public fields safe to show to other signed-in users.
+  /// Email, phone number, and block list stay in the private users document.
+  Map<String, dynamic> toPublicMap() => {
+    'uid': uid,
+    'name': name,
+    'photoUrl': photoUrl,
+    'about': about,
+    'isOnline': isOnline,
+    'lastSeen': lastSeen == null ? null : Timestamp.fromDate(lastSeen!),
+    'createdAt': Timestamp.fromDate(createdAt),
+    'updatedAt': Timestamp.fromDate(updatedAt),
+    'username': username,
+    'bio': bio,
+    'discoverability': discoverability.storageValue,
+    'whoCanMessage': whoCanMessage.storageValue,
+  };
+
   bool hasBlocked(String uid) => blockedUsers.contains(uid);
 
   UserModel copyWith({
