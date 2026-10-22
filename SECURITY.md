@@ -42,8 +42,24 @@ Do not place the Cloudinary API secret in Dart code, Firebase client config,
 
 ## Firestore and account protections
 
-- `firestore.rules` is the deploy source; `lib/firestore.rules` is a checked-in
-  duplicate and must remain byte-for-byte synchronized.
+- `firestore.rules` is the single checked-in deploy and emulator-test source.
+  Manage production rules in Firebase Console or deploy this reviewed source;
+  do not keep a second copy under `lib/`.
+- New chat rooms enforce the recipient's messaging preference. Contact matches
+  use a server-written UID index that is private to rules and expires after 24
+  hours; clients cannot read or edit it. The lookup endpoint includes only
+  accounts with a verified Firebase phone number matching the profile number.
+- FCM device tokens are no longer client-writable/readable in Firestore.
+  `manageNotificationDevice` requires App Check and Firebase Auth, rate-limits
+  registration changes, caps accounts at five devices, and stores tokens under
+  hashed document IDs. Existing token-ID documents migrate when that device
+  next registers or unregisters.
+- Cloudinary signature requests are rate-limited before room/profile reads.
+- Signup now links a verified phone credential to the email account. Enable
+  Firebase Phone Authentication and set SMS region policy before release.
+  Existing mobile accounts can link and sync a verified number under Settings;
+  the user must verify email first. Web signup does not link a phone number, so
+  web accounts are not contact-discoverable unless linked in the mobile app.
 - Run `firebase emulators:exec --only auth,firestore --project demo-velora
   "npm --prefix functions run test:security"` before deploying rules.
 - In Firebase Authentication settings, enable email enumeration protection,
@@ -89,3 +105,6 @@ it is written to `build/app/outputs/apk/release/app-release.apk`.
   Firebase project; no deployment is performed by this repository change.
 - Confirm the signed preset limits and test upload, contact discovery, account
   recovery, and push notifications on a physical release-signed device.
+- Account deletion is not implemented end-to-end. Define whether messages in
+  other users' chat history are retained, then delete Auth, profile, contact,
+  device-token, and applicable chat data consistently before offering deletion.

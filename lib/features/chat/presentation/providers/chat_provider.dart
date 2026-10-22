@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/datasources/firestore_chat_datasource.dart';
+import '../../data/datasources/messaging_permission_datasource.dart';
 import '../../data/models/chat_room_model.dart';
 import '../../data/models/chat_tile_model.dart';
 import '../../data/models/message_model.dart';
@@ -11,8 +12,14 @@ import '../../domain/repositories/chat_repository.dart';
 // Data Source
 // ==========================================================
 
-final firestoreChatDataSourceProvider =
-    Provider<FirestoreChatDataSource>((ref) {
+final messagingPermissionDataSourceProvider =
+    Provider<MessagingPermissionDataSource>((ref) {
+      return MessagingPermissionDataSource();
+    });
+
+final firestoreChatDataSourceProvider = Provider<FirestoreChatDataSource>((
+  ref,
+) {
   return FirestoreChatDataSource();
 });
 
@@ -22,9 +29,7 @@ final firestoreChatDataSourceProvider =
 
 final chatRepositoryProvider = Provider<ChatRepository>((ref) {
   return ChatRepositoryImpl(
-    dataSource: ref.watch(
-      firestoreChatDataSourceProvider,
-    ),
+    dataSource: ref.watch(firestoreChatDataSourceProvider),
   );
 });
 
@@ -32,8 +37,7 @@ final chatRepositoryProvider = Provider<ChatRepository>((ref) {
 // Chat Rooms
 // ==========================================================
 
-final chatRoomsProvider =
-    StreamProvider.family<List<ChatRoomModel>, String>((
+final chatRoomsProvider = StreamProvider.family<List<ChatRoomModel>, String>((
   ref,
   userId,
 ) {
@@ -44,8 +48,7 @@ final chatRoomsProvider =
 // Chat Tiles
 // ==========================================================
 
-final chatTilesProvider =
-    StreamProvider.family<List<ChatTileModel>, String>((
+final chatTilesProvider = StreamProvider.family<List<ChatTileModel>, String>((
   ref,
   currentUserId,
 ) async* {
@@ -57,8 +60,7 @@ final chatTilesProvider =
 // Messages
 // ==========================================================
 
-final messagesProvider =
-    StreamProvider.family<List<MessageModel>, String>((
+final messagesProvider = StreamProvider.family<List<MessageModel>, String>((
   ref,
   roomId,
 ) {
@@ -69,7 +71,9 @@ final messagesProvider =
 // Typing Indicator
 // ==========================================================
 
-final typingUsersProvider =
-    StreamProvider.family<List<String>, String>((ref, roomId) {
+final typingUsersProvider = StreamProvider.family<List<String>, String>((
+  ref,
+  roomId,
+) {
   return ref.watch(chatRepositoryProvider).typingStream(roomId);
 });

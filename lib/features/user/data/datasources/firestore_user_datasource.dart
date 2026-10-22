@@ -4,9 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../models/user_model.dart';
 
 class FirestoreUserDataSource {
-  FirestoreUserDataSource({
-    FirebaseFirestore? firestore,
-  }) : _firestore = firestore ?? FirebaseFirestore.instance;
+  FirestoreUserDataSource({FirebaseFirestore? firestore})
+    : _firestore = firestore ?? FirebaseFirestore.instance;
 
   final FirebaseFirestore _firestore;
 
@@ -68,57 +67,54 @@ class FirestoreUserDataSource {
         .where('discoverability', whereIn: ['phone_number', 'username'])
         .snapshots()
         .map(
-          (snapshot) => snapshot.docs
-              .map((e) => UserModel.fromMap(e.data()))
-              .toList(),
+          (snapshot) =>
+              snapshot.docs.map((e) => UserModel.fromMap(e.data())).toList(),
         );
   }
 
   Future<List<UserModel>> searchUsersByUsername(String query) async {
-  if (query.trim().isEmpty) return [];
+    if (query.trim().isEmpty) return [];
 
-  final snapshot = await _publicProfiles
-      .where('discoverability', isEqualTo: 'username')
-      .where('username', isGreaterThanOrEqualTo: query.toLowerCase())
-      .where('username',
-          isLessThanOrEqualTo: '${query.toLowerCase()}\uf8ff')
-      .limit(20)
-      .get();
+    final snapshot = await _publicProfiles
+        .where('discoverability', isEqualTo: 'username')
+        .where('username', isGreaterThanOrEqualTo: query.toLowerCase())
+        .where('username', isLessThanOrEqualTo: '${query.toLowerCase()}\uf8ff')
+        .limit(20)
+        .get();
 
-  return snapshot.docs
-      .map((doc) => UserModel.fromMap(doc.data()))
-      .toList();
-}
+    return snapshot.docs.map((doc) => UserModel.fromMap(doc.data())).toList();
+  }
 
   // ==========================================================
   // Update Profile
   // ==========================================================
-Future<bool> isUsernameTaken(String username) async {
-  final snapshot = await _publicProfiles
-      .where('username', isEqualTo: username)
-      .limit(1)
-      .get();
+  Future<bool> isUsernameTaken(String username) async {
+    final snapshot = await _publicProfiles
+        .where('username', isEqualTo: username)
+        .limit(1)
+        .get();
 
-  return snapshot.docs.isNotEmpty;
-}
-  Future<void> updateProfile({
-  required String uid,
-  required String name,
-  required String about,
-  required String photoUrl,
-  required String username,
-}) async {
-  final currentUser = await _users.doc(uid).get();
-
-final currentUsername = currentUser.data()?['username'];
-
-if (username != currentUsername) {
-  final exists = await isUsernameTaken(username);
-
-  if (exists) {
-    throw Exception('Username already taken');
+    return snapshot.docs.isNotEmpty;
   }
-}
+
+  Future<void> updateProfile({
+    required String uid,
+    required String name,
+    required String about,
+    required String photoUrl,
+    required String username,
+  }) async {
+    final currentUser = await _users.doc(uid).get();
+
+    final currentUsername = currentUser.data()?['username'];
+
+    if (username != currentUsername) {
+      final exists = await isUsernameTaken(username);
+
+      if (exists) {
+        throw Exception('Username already taken');
+      }
+    }
     final profileUpdate = {
       'name': name,
       'about': about,
@@ -164,6 +160,16 @@ if (username != currentUsername) {
     batch.update(_users.doc(uid), lastSeenUpdate);
     batch.update(_publicProfiles.doc(uid), lastSeenUpdate);
     await batch.commit();
+  }
+
+  Future<void> updateVerifiedPhoneNumber({
+    required String uid,
+    required String phoneNumber,
+  }) async {
+    await _users.doc(uid).update({
+      'phoneNumber': phoneNumber,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
   }
 
   // ==========================================================

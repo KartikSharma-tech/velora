@@ -2,7 +2,8 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() {
-      return request.auth != null;
+      return request.auth != null
+        && request.auth.token.get('email_verified', false) == true;
     }
 
     function isUser(userId) {
@@ -40,6 +41,8 @@ service cloud.firestore {
           && request.resource.data.blockedUsers.size() <= 500
           && request.resource.data.phoneNumber is string
           && request.resource.data.phoneNumber.size() <= 20
+          && (request.resource.data.phoneNumber == ''
+            || request.resource.data.phoneNumber == request.auth.token.phone_number)
           && request.resource.data.discoverability in [
             'phone_number', 'username', 'hidden'
           ]
@@ -67,6 +70,8 @@ service cloud.firestore {
         && request.resource.data.updatedAt is timestamp
         && request.resource.data.blockedUsers is list
         && request.resource.data.blockedUsers.size() <= 500
+        && (request.resource.data.phoneNumber == resource.data.phoneNumber
+          || request.resource.data.phoneNumber == request.auth.token.phone_number)
         && request.resource.data.discoverability in [
           'phone_number', 'username', 'hidden'
         ]
@@ -84,14 +89,15 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'name', 'photoUrl', 'about', 'isOnline', 'lastSeen', 'updatedAt',
           'username', 'bio', 'usernameChangeCount', 'usernameLastReset',
-          'blockedUsers', 'discoverability', 'whoCanMessage'
+          'blockedUsers', 'discoverability', 'whoCanMessage', 'phoneNumber'
         ]);
 
       allow delete: if isUser(userId);
 
       // A user's FCM registration tokens are private to that account.
       match /devices/{deviceId} {
-        allow read, write: if isUser(userId);
+        // Device tokens are managed by an App Check protected server endpoint.
+        allow read, write: if false;
       }
     }
 
@@ -163,6 +169,31 @@ service cloud.firestore {
       allow delete: if isUser(userId);
     }
     match /chat_rooms/{roomId} {
+      function recipientHasSenderAsContact(otherUserId) {
+        let contactsPath = /databases/$(database)/documents/message_contacts/$(otherUserId);
+        return exists(contactsPath)
+          && get(contactsPath).data.syncedAt is timestamp
+          && request.time < get(contactsPath).data.syncedAt + duration.value(24, 'h')
+          && get(contactsPath).data.contactUids is list
+          && get(contactsPath).data.contactUids.hasAny([request.auth.uid]);
+      }
+
+      function recipientAllowsNewRoom(otherUserId) {
+        let recipient = get(
+          /databases/$(database)/documents/users/$(otherUserId)
+        ).data;
+        let requestPath = /databases/$(database)/documents/chat_requests/$(request.auth.uid + '_' + otherUserId);
+        let messagePrivacy = recipient.get('whoCanMessage', 'contacts_and_requests');
+        return messagePrivacy == 'anyone'
+          || (messagePrivacy in ['contacts', 'contacts_and_requests']
+            && recipientHasSenderAsContact(otherUserId))
+          || (messagePrivacy == 'contacts_and_requests'
+            && exists(requestPath)
+            && get(requestPath).data.fromUserId == request.auth.uid
+            && get(requestPath).data.toUserId == otherUserId
+            && get(requestPath).data.status == 'accepted');
+      }
+
       function noParticipantHasBlocked(otherUserId) {
         let ownProfile = get(
           /databases/$(database)/documents/users/$(request.auth.uid)
@@ -224,6 +255,10 @@ service cloud.firestore {
         && request.resource.data.pinnedBy == []
         && request.resource.data.typingUsers == []
         && request.resource.data.deletedBy == []
+        && recipientAllowsNewRoom(
+          request.resource.data.participants[0] == request.auth.uid
+            ? request.resource.data.participants[1]
+            : request.resource.data.participants[0])
         && noParticipantHasBlocked(
           request.resource.data.participants[0] == request.auth.uid
             ? request.resource.data.participants[1]
@@ -404,6 +439,11 @@ service cloud.firestore {
 
         allow delete: if false;
       }
+    }
+
+    // Contact indexes are written only by the trusted contact lookup function.
+    match /message_contacts/{userId} {
+      allow read, write: if false;
     }
 
     match /chat_requests/{requestId} {

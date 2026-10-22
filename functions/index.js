@@ -1,5 +1,5 @@
 const { initializeApp } = require('firebase-admin/app');
-const { getFirestore } = require('firebase-admin/firestore');
+const { FieldValue, getFirestore } = require('firebase-admin/firestore');
 const { getMessaging } = require('firebase-admin/messaging');
 const { onDocumentCreated } = require('firebase-functions/v2/firestore');
 const { onRequest } = require('firebase-functions/v2/https');
@@ -8,6 +8,11 @@ const { getAppCheck } = require('firebase-admin/app-check');
 const { defineSecret, defineString } = require('firebase-functions/params');
 const { logger } = require('firebase-functions');
 const crypto = require('node:crypto');
+const {
+  MAX_DEVICES_PER_USER,
+  registerNotificationDevice,
+  unregisterNotificationDevice,
+} = require('./notification_device_store');
 
 initializeApp();
 
@@ -158,7 +163,7 @@ exports.lookupVeloraContacts = onRequest(
     }
 
     const phones = req.body?.phones;
-    if (!Array.isArray(phones) || phones.length > 250 ||
+    if (!Array.isArray(phones) || phones.length > 1000 ||
         phones.some((phone) => typeof phone !== 'string' ||
           !/^\+[1-9]\d{7,14}$/.test(phone))) {
       res.status(400).send('Invalid contact list');
@@ -173,8 +178,9 @@ exports.lookupVeloraContacts = onRequest(
         return;
       }
 
-      const matches = [];
+      const candidates = new Map();
       const uniquePhones = [...new Set(phones)];
+      const uniquePhoneSet = new Set(uniquePhones);
       for (let offset = 0; offset < uniquePhones.length; offset += 25) {
         const batch = uniquePhones.slice(offset, offset + 25);
         if (batch.length === 0) continue;
@@ -183,35 +189,246 @@ exports.lookupVeloraContacts = onRequest(
           .get();
         for (const userDoc of users.docs) {
           const user = userDoc.data();
+          if (userDoc.id === uid) continue;
           if (user.discoverability && user.discoverability !== 'phone_number') continue;
-          const profile = {
-            uid: userDoc.id,
-            name: typeof user.name === 'string' ? user.name : 'Velora User',
-            photoUrl: typeof user.photoUrl === 'string' ? user.photoUrl : '',
-            about: typeof user.about === 'string' ? user.about : '',
-            isOnline: user.isOnline === true,
-            lastSeen: user.lastSeen || null,
-            createdAt: user.createdAt || new Date(),
-            updatedAt: user.updatedAt || new Date(),
-            username: typeof user.username === 'string' ? user.username : null,
-            bio: typeof user.bio === 'string' ? user.bio : null,
-            discoverability: user.discoverability || 'phone_number',
-            whoCanMessage: user.whoCanMessage || 'contacts_and_requests',
-          };
-          await db.collection('public_profiles').doc(userDoc.id).set(profile, { merge: true });
-          matches.push({
-            uid: userDoc.id,
-            phoneNumber: user.phoneNumber,
-            name: profile.name,
-            photoUrl: profile.photoUrl,
-            username: profile.username,
-          });
+          if (typeof user.phoneNumber !== 'string' ||
+              !uniquePhoneSet.has(user.phoneNumber)) continue;
+          candidates.set(userDoc.id, user);
+          if (candidates.size > 1000) {
+            res.status(413).send('Too many matching accounts');
+            return;
+          }
         }
       }
+
+      const authUsers = candidates.size === 0
+        ? { users: [] }
+        : await getAuth().getUsers(
+          [...candidates.keys()].map((candidateUid) => ({ uid: candidateUid })),
+        );
+      const contactUids = [];
+      const matches = [];
+      for (const authUser of authUsers.users) {
+        const user = candidates.get(authUser.uid);
+        if (!user || authUser.emailVerified !== true ||
+            !authUser.phoneNumber || authUser.phoneNumber !== user.phoneNumber) {
+          continue;
+        }
+        contactUids.push(authUser.uid);
+        matches.push({
+          uid: authUser.uid,
+          phoneNumber: authUser.phoneNumber,
+          name: typeof user.name === 'string' ? user.name : 'Velora User',
+          photoUrl: typeof user.photoUrl === 'string' ? user.photoUrl : '',
+          username: typeof user.username === 'string' ? user.username : null,
+        });
+      }
+      await db.collection('message_contacts').doc(uid).set({
+        contactUids,
+        syncedAt: FieldValue.serverTimestamp(),
+      });
       res.status(200).json(matches);
     } catch (error) {
       logger.error('Contact lookup failed', { uid, error: error.message });
       res.status(500).send('Contact lookup failed');
+    }
+  },
+);
+
+// Returns only the caller's current messaging decision, without exposing the
+// recipient's phone numbers or complete contact index.
+exports.resolveMessagingPermission = onRequest(
+  { region: 'us-central1', cors: false },
+  async (req, res) => {
+    if (req.method !== 'POST') {
+      res.set('Allow', 'POST').status(405).send('Method not allowed');
+      return;
+    }
+    if (!await requireAppCheck(req, res)) return;
+
+    const token = (req.get('authorization') || '').match(/^Bearer (.+)$/)?.[1];
+    if (!token) {
+      res.status(401).send('Authentication required');
+      return;
+    }
+
+    let uid;
+    try {
+      const decoded = await getAuth().verifyIdToken(token);
+      if (decoded.email_verified !== true) {
+        res.status(403).send('Verified email required');
+        return;
+      }
+      uid = decoded.uid;
+    } catch (error) {
+      res.status(401).send('Invalid authentication token');
+      return;
+    }
+
+    const targetUid = req.body?.targetUid;
+    if (typeof targetUid !== 'string' || targetUid === uid ||
+        !/^[A-Za-z0-9_-]{1,128}$/.test(targetUid)) {
+      res.status(400).send('Invalid target account');
+      return;
+    }
+
+    const db = getFirestore();
+    try {
+      const allowed = await consumeRateLimit(
+        db,
+        uid,
+        'messaging_permission',
+        60,
+        300,
+      );
+      if (!allowed) {
+        res.status(429).send('Too many permission checks');
+        return;
+      }
+
+      const [callerSnapshot, recipientSnapshot] = await Promise.all([
+        db.collection('users').doc(uid).get(),
+        db.collection('users').doc(targetUid).get(),
+      ]);
+      if (!callerSnapshot.exists || !recipientSnapshot.exists) {
+        res.status(200).json({ permission: 'blocked' });
+        return;
+      }
+      const caller = callerSnapshot.data();
+      const recipient = recipientSnapshot.data();
+      if (caller.blockedUsers?.includes(targetUid) ||
+          recipient.blockedUsers?.includes(uid)) {
+        res.status(200).json({ permission: 'blocked' });
+        return;
+      }
+
+      const roomId = [uid, targetUid].sort().join('_');
+      const roomSnapshot = await db.collection('chat_rooms').doc(roomId).get();
+      if (roomSnapshot.exists &&
+          roomSnapshot.data()?.participants?.includes(uid) &&
+          roomSnapshot.data()?.participants?.includes(targetUid)) {
+        res.status(200).json({ permission: 'allowed' });
+        return;
+      }
+
+      const messagePrivacy = recipient.whoCanMessage || 'contacts_and_requests';
+      if (messagePrivacy === 'anyone') {
+        res.status(200).json({ permission: 'allowed' });
+        return;
+      }
+      if (messagePrivacy === 'nobody') {
+        res.status(200).json({ permission: 'blocked' });
+        return;
+      }
+
+      const contactsSnapshot = await db.collection('message_contacts')
+        .doc(targetUid)
+        .get();
+      const contacts = contactsSnapshot.data();
+      const hasFreshContactIndex = contactsSnapshot.exists &&
+        typeof contacts?.syncedAt?.toMillis === 'function' &&
+        Date.now() - contacts.syncedAt.toMillis() >= 0 &&
+        Date.now() - contacts.syncedAt.toMillis() < 24 * 60 * 60 * 1000;
+      const senderIsRecipientContact = hasFreshContactIndex &&
+        Array.isArray(contacts.contactUids) && contacts.contactUids.includes(uid);
+      if (senderIsRecipientContact) {
+        res.status(200).json({ permission: 'allowed' });
+        return;
+      }
+      if (messagePrivacy === 'contacts') {
+        res.status(200).json({ permission: 'blocked' });
+        return;
+      }
+
+      const requestSnapshot = await db.collection('chat_requests')
+        .doc(`${uid}_${targetUid}`)
+        .get();
+      const request = requestSnapshot.data();
+      if (request?.fromUserId === uid && request?.toUserId === targetUid &&
+          request?.status === 'accepted') {
+        res.status(200).json({ permission: 'allowed' });
+        return;
+      }
+      res.status(200).json({ permission: 'request_required' });
+    } catch (error) {
+      logger.error('Messaging permission check failed', { uid, error: error.message });
+      res.status(500).send('Permission check failed');
+    }
+  },
+);
+
+// Device tokens grant the ability to send push notifications. Keep them out
+// of client-writable Firestore paths; only this authenticated, App Check
+// protected endpoint can register or remove a token for the caller.
+exports.manageNotificationDevice = onRequest(
+  { region: 'us-central1', cors: false },
+  async (req, res) => {
+    if (req.method !== 'POST') {
+      res.set('Allow', 'POST').status(405).send('Method not allowed');
+      return;
+    }
+    if (!await requireAppCheck(req, res)) return;
+
+    const token = (req.get('authorization') || '').match(/^Bearer (.+)$/)?.[1];
+    if (!token) {
+      res.status(401).send('Authentication required');
+      return;
+    }
+
+    let uid;
+    try {
+      const decoded = await getAuth().verifyIdToken(token);
+      if (decoded.email_verified !== true) {
+        res.status(403).send('Verified email required');
+        return;
+      }
+      uid = decoded.uid;
+    } catch (error) {
+      res.status(401).send('Invalid authentication token');
+      return;
+    }
+
+    const { action, deviceToken, platform } = req.body || {};
+    if (!['register', 'unregister'].includes(action) ||
+        typeof deviceToken !== 'string' ||
+        Buffer.byteLength(deviceToken, 'utf8') < 100 ||
+        Buffer.byteLength(deviceToken, 'utf8') > 4096 ||
+        !/^[A-Za-z0-9:_-]+$/.test(deviceToken) ||
+        (action === 'register' &&
+          !['android', 'ios', 'macOS'].includes(platform))) {
+      res.status(400).send('Invalid device registration');
+      return;
+    }
+
+    const db = getFirestore();
+    try {
+      const allowed = await consumeRateLimit(
+        db,
+        uid,
+        'notification_device',
+        10,
+        50,
+      );
+      if (!allowed) {
+        res.status(429).send('Too many device changes');
+        return;
+      }
+
+      if (action === 'unregister') {
+        await unregisterNotificationDevice(db, uid, deviceToken);
+        res.status(204).end();
+        return;
+      }
+
+      await registerNotificationDevice(db, uid, deviceToken, platform);
+      res.status(204).end();
+    } catch (error) {
+      if (error.code === 'device-limit') {
+        res.status(429).send(`Device limit reached (${MAX_DEVICES_PER_USER})`);
+        return;
+      }
+      logger.error('Notification device update failed', { uid, error: error.message });
+      res.status(500).send('Notification device update failed');
     }
   },
 );
@@ -239,9 +456,36 @@ exports.createCloudinaryUploadSignature = onRequest(
 
     let uid;
     try {
-      uid = (await getAuth().verifyIdToken(token)).uid;
+      const decoded = await getAuth().verifyIdToken(token);
+      if (decoded.email_verified !== true) {
+        res.status(403).send('Verified email required');
+        return;
+      }
+      uid = decoded.uid;
     } catch (error) {
       res.status(401).send('Invalid authentication token');
+      return;
+    }
+
+    const db = getFirestore();
+    try {
+      const allowed = await consumeRateLimit(
+        db,
+        uid,
+        'cloudinary_upload_signature',
+        6,
+        50,
+      );
+      if (!allowed) {
+        res.status(429).send('Too many upload requests');
+        return;
+      }
+    } catch (error) {
+      logger.error('Cloudinary upload rate-limit check failed', {
+        uid,
+        error: error.message,
+      });
+      res.status(500).send('Upload authorization failed');
       return;
     }
 
@@ -283,20 +527,7 @@ exports.createCloudinaryUploadSignature = onRequest(
       return;
     }
 
-    const db = getFirestore();
     try {
-      const allowed = await consumeRateLimit(
-        db,
-        uid,
-        'cloudinary_upload_signature',
-        6,
-        50,
-      );
-      if (!allowed) {
-        res.status(429).send('Too many upload requests');
-        return;
-      }
-
       const timestamp = Math.floor(Date.now() / 1000);
       const params = {
         folder,

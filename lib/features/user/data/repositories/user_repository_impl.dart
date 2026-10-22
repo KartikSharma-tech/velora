@@ -1,10 +1,9 @@
 import '../../domain/repositories/user_repository.dart';
 import '../datasources/firestore_user_datasource.dart';
 import '../models/user_model.dart';
+
 class UserRepositoryImpl implements UserRepository {
-  UserRepositoryImpl({
-    required this._dataSource,
-  });
+  UserRepositoryImpl({required this._dataSource});
 
   final FirestoreUserDataSource _dataSource;
 
@@ -28,44 +27,52 @@ class UserRepositoryImpl implements UserRepository {
     return _dataSource.getAllUsers();
   }
 
-@override
-Future<List<UserModel>> searchUsersByUsername(String query) {
-  return _dataSource.searchUsersByUsername(query);
-}
   @override
-Future<void> updateProfile({
-  required String uid,
-  required String name,
-  required String about,
-  required String photoUrl,
-  required String username,
-}) {
-  return _dataSource.updateProfile(
-    uid: uid,
-    name: name,
-    about: about,
-    photoUrl: photoUrl,
-    username: username,
-  );
-}
-@override
-Future<bool> isUsernameTaken(String username) {
-  return _dataSource.isUsernameTaken(username);
-}
+  Future<List<UserModel>> searchUsersByUsername(String query) {
+    return _dataSource.searchUsersByUsername(query);
+  }
+
   @override
-  Future<void> setOnlineStatus({
+  Future<void> updateProfile({
     required String uid,
-    required bool isOnline,
+    required String name,
+    required String about,
+    required String photoUrl,
+    required String username,
   }) {
-    return _dataSource.setOnlineStatus(
+    return _dataSource.updateProfile(
       uid: uid,
-      isOnline: isOnline,
+      name: name,
+      about: about,
+      photoUrl: photoUrl,
+      username: username,
     );
+  }
+
+  @override
+  Future<bool> isUsernameTaken(String username) {
+    return _dataSource.isUsernameTaken(username);
+  }
+
+  @override
+  Future<void> setOnlineStatus({required String uid, required bool isOnline}) {
+    return _dataSource.setOnlineStatus(uid: uid, isOnline: isOnline);
   }
 
   @override
   Future<void> updateLastSeen(String uid) {
     return _dataSource.updateLastSeen(uid);
+  }
+
+  @override
+  Future<void> updateVerifiedPhoneNumber({
+    required String uid,
+    required String phoneNumber,
+  }) {
+    return _dataSource.updateVerifiedPhoneNumber(
+      uid: uid,
+      phoneNumber: phoneNumber,
+    );
   }
 
   @override
@@ -79,10 +86,7 @@ Future<bool> isUsernameTaken(String username) {
   }
 
   @override
-  Future<void> unblockUser({
-    required String uid,
-    required String blockedUid,
-  }) {
+  Future<void> unblockUser({required String uid, required String blockedUid}) {
     return _dataSource.unblockUser(uid: uid, blockedUid: blockedUid);
   }
 }

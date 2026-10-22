@@ -1,8 +1,19 @@
 const assert = require('node:assert/strict');
+const { initializeApp } = require('firebase-admin/app');
+const { getFirestore, Timestamp } = require('firebase-admin/firestore');
+const {
+  MAX_DEVICES_PER_USER,
+  notificationDeviceId,
+  registerNotificationDevice,
+  unregisterNotificationDevice,
+} = require('./notification_device_store');
 
 const projectId = process.env.GCLOUD_PROJECT || 'demo-velora';
 const authBase = 'http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1';
 const firestoreBase = `http://127.0.0.1:8080/v1/projects/${projectId}/databases/(default)/documents`;
+
+initializeApp({ projectId });
+const adminDb = getFirestore();
 
 function toValue(value) {
   if (value === null) return { nullValue: null };
@@ -107,7 +118,7 @@ async function expectStatus(response, expected, label) {
     createdAt: now,
     updatedAt: now,
     blockedUsers: [],
-    phoneNumber: '+14155550123',
+    phoneNumber: '',
     discoverability: 'phone_number',
     whoCanMessage: 'contacts_and_requests',
   });
@@ -119,6 +130,109 @@ async function expectStatus(response, expected, label) {
       `owner creates private profile (${name})`,
     );
   }
+  const phoneSpoof = await signUp(`phone-spoof-${suffix}@example.test`);
+  await expectStatus(
+    await create(`users/${phoneSpoof.localId}`, phoneSpoof.idToken, {
+      ...privateProfile(phoneSpoof, 'Phone Spoof'),
+      phoneNumber: '+14155550123',
+    }),
+    403,
+    'account cannot create a profile with an unverified phone claim',
+  );
+  await expectStatus(
+    await request(`users/${alice.localId}`, {
+      token: alice.idToken,
+      method: 'PATCH',
+      body: { phoneNumber: '+14155550123' },
+      updateFields: ['phoneNumber'],
+    }),
+    403,
+    'account cannot claim an unverified phone number',
+  );
+  await expectStatus(
+    await request(`message_contacts/${bob.localId}`, { token: alice.idToken }),
+    403,
+    'clients cannot read another account contact index',
+  );
+  await expectStatus(
+    await request(`message_contacts/${bob.localId}`, {
+      token: bob.idToken,
+      method: 'PATCH',
+      body: { contactUids: [alice.localId] },
+      updateFields: ['contactUids'],
+    }),
+    403,
+    'clients cannot forge a contact index',
+  );
+  const deviceCollection = new URL(
+    `${firestoreBase}/users/${alice.localId}/devices?documentId=attacker-device`,
+  );
+  await expectStatus(
+    await fetch(deviceCollection, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${alice.idToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ fields: toFields({
+        token: 'attacker-controlled-token',
+        platform: 'android',
+      }) }),
+    }),
+    403,
+    'clients cannot write notification tokens directly',
+  );
+
+  const migrationUid = `device-migration-${suffix}`;
+  const legacyDeviceToken = `legacy-device-${'x'.repeat(120)}`;
+  await adminDb.collection('users').doc(migrationUid).collection('devices')
+    .doc(legacyDeviceToken).set({
+      token: legacyDeviceToken,
+      platform: 'android',
+      updatedAt: Timestamp.now(),
+    });
+  await registerNotificationDevice(
+    adminDb,
+    migrationUid,
+    legacyDeviceToken,
+    'android',
+  );
+  const migratedDeviceRef = adminDb.collection('users').doc(migrationUid)
+    .collection('devices').doc(notificationDeviceId(legacyDeviceToken));
+  assert.equal((await migratedDeviceRef.get()).data().token, legacyDeviceToken);
+  assert.equal(
+    (await adminDb.collection('users').doc(migrationUid)
+      .collection('devices').doc(legacyDeviceToken).get()).exists,
+    false,
+    'legacy token document is removed during registration migration',
+  );
+  await unregisterNotificationDevice(adminDb, migrationUid, legacyDeviceToken);
+  assert.equal((await migratedDeviceRef.get()).exists, false);
+
+  const cappedUid = `device-cap-${suffix}`;
+  for (let index = 0; index < MAX_DEVICES_PER_USER; index++) {
+    await registerNotificationDevice(
+      adminDb,
+      cappedUid,
+      `registered-device-${index}-${'y'.repeat(120)}`,
+      'android',
+    );
+  }
+  await assert.rejects(
+    registerNotificationDevice(
+      adminDb,
+      cappedUid,
+      `overflow-device-${'z'.repeat(120)}`,
+      'android',
+    ),
+    (error) => error.code === 'device-limit',
+    'a user cannot exceed the server-side notification device limit',
+  );
+  assert.equal(
+    (await adminDb.collection('users').doc(cappedUid)
+      .collection('devices').get()).size,
+    MAX_DEVICES_PER_USER,
+  );
   await expectStatus(
     await create(`public_profiles/${alice.localId}`, alice.idToken, publicProfile(alice.localId)),
     200,
@@ -193,22 +307,94 @@ async function expectStatus(response, expected, label) {
 
   const participants = [alice.localId, bob.localId].sort();
   const roomId = participants.join('_');
+  const hiddenParticipants = [hidden.localId, bob.localId].sort();
+  const hiddenRoomId = hiddenParticipants.join('_');
+  const roomData = {
+    id: roomId,
+    participants,
+    lastMessage: '',
+    lastMessageId: '',
+    lastMessageSenderId: '',
+    lastMessageTime: now,
+    lastMessageSeen: true,
+    createdAt: now,
+    pinnedBy: [],
+    typingUsers: [],
+    deletedBy: [],
+  };
+  const hiddenRoomData = { ...roomData, id: hiddenRoomId, participants: hiddenParticipants };
+  for (const setting of ['contacts', 'nobody']) {
+    await expectStatus(
+      await request(`users/${bob.localId}`, {
+        token: bob.idToken,
+        method: 'PATCH',
+        body: { whoCanMessage: setting },
+        updateFields: ['whoCanMessage'],
+      }),
+      200,
+      `recipient sets ${setting} privacy`,
+    );
+    if (setting === 'contacts') {
+      await adminDb.collection('message_contacts').doc(bob.localId).set({
+        contactUids: [alice.localId],
+        syncedAt: Timestamp.fromDate(new Date(Date.now() - 25 * 60 * 60 * 1000)),
+      });
+      await expectStatus(
+        await create(`chat_rooms/${roomId}`, alice.idToken, roomData),
+        403,
+        'expired contact index cannot authorize a chat',
+      );
+      await adminDb.collection('message_contacts').doc(bob.localId).set({
+        contactUids: [alice.localId],
+        syncedAt: Timestamp.now(),
+      });
+      await expectStatus(
+        await create(`chat_rooms/${roomId}`, alice.idToken, roomData),
+        200,
+        'fresh recipient-owned contact authorizes a chat',
+      );
+    }
+    await expectStatus(
+      await create(`chat_rooms/${hiddenRoomId}`, hidden.idToken, hiddenRoomData),
+      403,
+      `room creation denied by ${setting} privacy for a non-contact`,
+    );
+  }
   await expectStatus(
-    await create(`chat_rooms/${roomId}`, alice.idToken, {
-      id: roomId,
-      participants,
-      lastMessage: '',
-      lastMessageId: '',
-      lastMessageSenderId: '',
-      lastMessageTime: now,
-      lastMessageSeen: true,
-      createdAt: now,
-      pinnedBy: [],
-      typingUsers: [],
-      deletedBy: [],
+    await request(`users/${bob.localId}`, {
+      token: bob.idToken,
+      method: 'PATCH',
+      body: { whoCanMessage: 'contacts_and_requests' },
+      updateFields: ['whoCanMessage'],
     }),
     200,
-    'room participant creates chat room',
+    'recipient restores accepted-request privacy',
+  );
+  const hiddenRequestId = `${hidden.localId}_${bob.localId}`;
+  await expectStatus(
+    await create(`chat_requests/${hiddenRequestId}`, hidden.idToken, {
+      ...chatRequest,
+      id: hiddenRequestId,
+      fromUserId: hidden.localId,
+      toUserId: bob.localId,
+    }),
+    200,
+    'non-contact can request a chat when recipient permits requests',
+  );
+  await expectStatus(
+    await request(`chat_requests/${hiddenRequestId}`, {
+      token: bob.idToken,
+      method: 'PATCH',
+      body: { status: 'accepted', respondedAt: now },
+      updateFields: ['status', 'respondedAt'],
+    }),
+    200,
+    'recipient can accept non-contact request',
+  );
+  await expectStatus(
+    await create(`chat_rooms/${hiddenRoomId}`, hidden.idToken, hiddenRoomData),
+    200,
+    'accepted request authorizes a new chat room',
   );
 
   const messageId = `message-${suffix}`;

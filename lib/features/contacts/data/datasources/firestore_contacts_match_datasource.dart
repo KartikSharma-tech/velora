@@ -15,7 +15,7 @@ class FirestoreContactsMatchDataSource {
   final FirebaseAuth _auth;
   final http.Client _client;
 
-  static const int _batchSize = 250;
+  static const int _maxContactNumbers = 1000;
   Uri get _lookupUri => Uri.https(
     'us-central1-${Firebase.app().options.projectId}.cloudfunctions.net',
     '/lookupVeloraContacts',
@@ -26,11 +26,12 @@ class FirestoreContactsMatchDataSource {
   Future<Map<String, VeloraContact>> fetchVeloraUsers(
     List<String> normalizedPhones,
   ) async {
-    if (normalizedPhones.isEmpty) return {};
-
     final user = _auth.currentUser;
     if (user == null || !user.emailVerified) {
       throw StateError('Sign in with a verified account to find contacts.');
+    }
+    if (normalizedPhones.length > _maxContactNumbers) {
+      throw StateError('Contact list is too large to sync securely.');
     }
     final idToken = await user.getIdToken();
     final appCheckToken = await FirebaseAppCheck.instance.getToken();
@@ -40,38 +41,35 @@ class FirestoreContactsMatchDataSource {
 
     final phones = normalizedPhones.toSet().toList();
     final result = <String, VeloraContact>{};
-    for (var i = 0; i < phones.length; i += _batchSize) {
-      final batch = phones.skip(i).take(_batchSize).toList();
-      final response = await _client
-          .post(
-            _lookupUri,
-            headers: {
-              'Authorization': 'Bearer $idToken',
-              'Content-Type': 'application/json',
-              'X-Firebase-AppCheck': appCheckToken,
-            },
-            body: jsonEncode({'phones': batch}),
-          )
-          .timeout(const Duration(seconds: 20));
-      if (response.statusCode != 200) {
-        throw StateError('Contact lookup failed (${response.statusCode}).');
-      }
+    final response = await _client
+        .post(
+          _lookupUri,
+          headers: {
+            'Authorization': 'Bearer $idToken',
+            'Content-Type': 'application/json',
+            'X-Firebase-AppCheck': appCheckToken,
+          },
+          body: jsonEncode({'phones': phones}),
+        )
+        .timeout(const Duration(seconds: 60));
+    if (response.statusCode != 200) {
+      throw StateError('Contact lookup failed (${response.statusCode}).');
+    }
 
-      final matches = jsonDecode(response.body) as List<dynamic>;
-      for (final match in matches) {
-        final data = Map<String, dynamic>.from(match as Map);
-        final phone = data['phoneNumber'] as String?;
-        if (phone == null || phone.isEmpty) continue;
-        result[phone] = VeloraContact(
-          displayName: data['name'] as String? ?? 'Velora User',
-          phone: phone,
-          isOnVelora: true,
-          uid: data['uid'] as String?,
-          veloraName: data['name'] as String?,
-          photoUrl: data['photoUrl'] as String?,
-          username: data['username'] as String?,
-        );
-      }
+    final matches = jsonDecode(response.body) as List<dynamic>;
+    for (final match in matches) {
+      final data = Map<String, dynamic>.from(match as Map);
+      final phone = data['phoneNumber'] as String?;
+      if (phone == null || phone.isEmpty) continue;
+      result[phone] = VeloraContact(
+        displayName: data['name'] as String? ?? 'Velora User',
+        phone: phone,
+        isOnVelora: true,
+        uid: data['uid'] as String?,
+        veloraName: data['name'] as String?,
+        photoUrl: data['photoUrl'] as String?,
+        username: data['username'] as String?,
+      );
     }
     return result;
   }

@@ -33,9 +33,11 @@ class ContactSyncEngine {
     if (!hasPermission) {
       final granted = await _repository.requestPermission();
       if (!granted) {
-        // Permission nahi mili — cache se return karo
-        final cached = await _repository.getCachedContacts();
-        return _splitContacts(cached, fromCache: true);
+        try {
+          await _repository.fetchVeloraUsers(const []);
+        } catch (_) {}
+        await _repository.clearCache();
+        return _splitContacts(const [], fromCache: false);
       }
     }
 
@@ -48,14 +50,9 @@ class ContactSyncEngine {
         .toSet()
         .toList();
 
-    // Step 5 — batch mein Firestore query (30 per batch)
-    final veloraUsersMap = <String, VeloraContact>{};
-    final batches = _chunk(allPhones, 30);
-
-    for (final batch in batches) {
-      final result = await _repository.fetchVeloraUsers(batch);
-      veloraUsersMap.addAll(result);
-    }
+    // Send the complete set so the server can replace its trusted contact
+    // index atomically rather than retaining removed contacts.
+    final veloraUsersMap = await _repository.fetchVeloraUsers(allPhones);
 
     // Step 6 — device contacts ko VeloraContact mein convert karo
     final allContacts = <VeloraContact>[];
@@ -74,11 +71,13 @@ class ContactSyncEngine {
         allContacts.add(matched);
       } else {
         // Not on Velora
-        allContacts.add(VeloraContact(
-          displayName: contact.displayName,
-          phone: contact.normalizedPhones.firstOrNull ?? '',
-          isOnVelora: false,
-        ));
+        allContacts.add(
+          VeloraContact(
+            displayName: contact.displayName,
+            phone: contact.normalizedPhones.firstOrNull ?? '',
+            isOnVelora: false,
+          ),
+        );
       }
     }
 
@@ -104,13 +103,5 @@ class ContactSyncEngine {
       syncedAt: DateTime.now(),
       fromCache: fromCache,
     );
-  }
-
-  List<List<T>> _chunk<T>(List<T> list, int size) {
-    final chunks = <List<T>>[];
-    for (var i = 0; i < list.length; i += size) {
-      chunks.add(list.sublist(i, i + size > list.length ? list.length : i + size));
-    }
-    return chunks;
   }
 }

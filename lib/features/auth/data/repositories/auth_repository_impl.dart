@@ -1,3 +1,5 @@
+import 'package:firebase_auth/firebase_auth.dart';
+
 import '../../domain/repositories/auth_repository.dart';
 import '../datasources/firebase_auth_datasource.dart';
 import '../../../../core/services/notification_service.dart';
@@ -22,6 +24,29 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<void> signIn({required String email, required String password}) async {
     await _remoteDataSource.signIn(email: email, password: password);
+    final user = _remoteDataSource.currentUser;
+    if (user == null || !user.emailVerified) return;
+
+    final uid = user.uid;
+    if (await _userRepository.getUser(uid) != null) return;
+    final now = DateTime.now();
+    final displayName = user.displayName?.trim();
+    await _userRepository.createUser(
+      UserModel(
+        uid: uid,
+        name: displayName == null || displayName.isEmpty
+            ? 'Velora User'
+            : displayName,
+        email: user.email ?? email.trim(),
+        photoUrl: user.photoURL ?? '',
+        about: "Hey there! I'm using Velora.",
+        isOnline: false,
+        lastSeen: now,
+        createdAt: now,
+        updatedAt: now,
+        phoneNumber: user.phoneNumber ?? '',
+      ),
+    );
   }
 
   @override
@@ -30,29 +55,55 @@ class AuthRepositoryImpl implements AuthRepository {
     required String email,
     required String password,
     required String phone,
+    required PhoneAuthCredential? phoneCredential,
   }) async {
     await _remoteDataSource.signUp(email: email, password: password);
 
+    var verifiedPhone = '';
+    if (phoneCredential != null) {
+      try {
+        verifiedPhone = await _remoteDataSource.linkVerifiedPhone(
+          phoneCredential,
+        );
+      } catch (_) {
+        try {
+          await _remoteDataSource.deleteCurrentUser();
+        } catch (_) {}
+        rethrow;
+      }
+      if (verifiedPhone != phone) {
+        try {
+          await _remoteDataSource.deleteCurrentUser();
+        } catch (_) {}
+        throw StateError('Verified phone number does not match.');
+      }
+    }
+
     await _remoteDataSource.updateDisplayName(name);
 
-    final uid = _remoteDataSource.currentUserId;
-    if (uid == null) throw Exception('User not found after signup.');
-
-    final user = UserModel(
-      uid: uid,
-      name: name,
-      email: email,
-      photoUrl: '',
-      about: "Hey there! I'm using Velora.",
-      isOnline: false,
-      lastSeen: DateTime.now(),
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-      phoneNumber: phone, // ✅ phone save
-    );
-
-    await _userRepository.createUser(user);
     await _remoteDataSource.sendEmailVerification();
+    await _remoteDataSource.signOut();
+  }
+
+  @override
+  Future<String> verifyAndLinkPhoneNumber(
+    PhoneAuthCredential? credential,
+  ) async {
+    final currentUid = _remoteDataSource.currentUserId;
+    if (currentUid == null) throw StateError('Sign in before linking a phone.');
+
+    final existingPhone = _remoteDataSource.currentPhoneNumber;
+    final verifiedPhone = existingPhone ?? await _linkNewPhone(credential);
+    await _userRepository.updateVerifiedPhoneNumber(
+      uid: currentUid,
+      phoneNumber: verifiedPhone,
+    );
+    return verifiedPhone;
+  }
+
+  Future<String> _linkNewPhone(PhoneAuthCredential? credential) {
+    if (credential == null) throw ArgumentError.notNull('credential');
+    return _remoteDataSource.linkVerifiedPhone(credential);
   }
 
   @override
