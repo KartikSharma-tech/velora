@@ -57,6 +57,8 @@ Do not place the Cloudinary API secret in Dart code, Firebase client config,
 - Cloudinary signature requests are rate-limited before room/profile reads.
 - Signup now links a verified phone credential to the email account. Enable
   Firebase Phone Authentication and set SMS region policy before release.
+  Firestore access requires a verified email. Signup sends the verification
+  email and signs out; first verified login creates the initial user profiles.
   Existing mobile accounts can link and sync a verified number under Settings;
   the user must verify email first. Web signup does not link a phone number, so
   web accounts are not contact-discoverable unless linked in the mobile app.

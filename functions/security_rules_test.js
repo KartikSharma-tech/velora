@@ -1,4 +1,5 @@
 const assert = require('node:assert/strict');
+const { getAuth } = require('firebase-admin/auth');
 const { initializeApp } = require('firebase-admin/app');
 const { getFirestore, Timestamp } = require('firebase-admin/firestore');
 const {
@@ -34,7 +35,7 @@ function toFields(value) {
   return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, toValue(item)]));
 }
 
-async function signUp(email) {
+async function signUp(email, { verify = true } = {}) {
   const response = await fetch(`${authBase}/accounts:signUp?key=fake-api-key`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -42,6 +43,31 @@ async function signUp(email) {
   });
   const payload = await response.json();
   assert.equal(response.status, 200, 'Auth emulator signup failed: ' + JSON.stringify(payload));
+  if (verify) {
+    await getAuth().updateUser(payload.localId, { emailVerified: true });
+    const verifiedResponse = await fetch(`${authBase}/accounts:signInWithPassword?key=fake-api-key`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email,
+        password: 'test-password-123',
+        returnSecureToken: true,
+      }),
+    });
+    const verifiedPayload = await verifiedResponse.json();
+    assert.equal(
+      verifiedResponse.status,
+      200,
+      'Auth emulator verified sign-in failed: ' + JSON.stringify(verifiedPayload),
+    );
+    assert.equal(
+      typeof verifiedPayload.idToken,
+      'string',
+      'Auth emulator verified sign-in did not return an ID token: ' +
+        JSON.stringify(verifiedPayload),
+    );
+    return verifiedPayload;
+  }
   return payload;
 }
 
@@ -90,6 +116,10 @@ async function expectStatus(response, expected, label) {
   const alice = await signUp(`alice-${suffix}@example.test`);
   const bob = await signUp(`bob-${suffix}@example.test`);
   const hidden = await signUp(`hidden-${suffix}@example.test`);
+  const unverified = await signUp(
+    `unverified-${suffix}@example.test`,
+    { verify: false },
+  );
   const now = new Date();
   const nowIso = now.toISOString();
 
@@ -130,6 +160,15 @@ async function expectStatus(response, expected, label) {
       `owner creates private profile (${name})`,
     );
   }
+  await expectStatus(
+    await create(
+      `users/${unverified.localId}`,
+      unverified.idToken,
+      privateProfile(unverified, 'Unverified'),
+    ),
+    403,
+    'unverified accounts cannot create a Firestore profile',
+  );
   const phoneSpoof = await signUp(`phone-spoof-${suffix}@example.test`);
   await expectStatus(
     await create(`users/${phoneSpoof.localId}`, phoneSpoof.idToken, {
@@ -248,6 +287,13 @@ async function expectStatus(response, expected, label) {
     200,
     'owner creates hidden public profile',
   );
+  await expectStatus(
+    await request(`public_profiles/${alice.localId}`, {
+      token: unverified.idToken,
+    }),
+    403,
+    'unverified accounts cannot read public profiles',
+  );
 
   const requestId = `${alice.localId}_${bob.localId}`;
   const chatRequest = {
@@ -263,6 +309,16 @@ async function expectStatus(response, expected, label) {
     createdAt: now,
     respondedAt: null,
   };
+  const unverifiedRequestId = `${unverified.localId}_${bob.localId}`;
+  await expectStatus(
+    await create(`chat_requests/${unverifiedRequestId}`, unverified.idToken, {
+      ...chatRequest,
+      id: unverifiedRequestId,
+      fromUserId: unverified.localId,
+    }),
+    403,
+    'unverified accounts cannot create chat requests',
+  );
   await expectStatus(
     await create(`chat_requests/${requestId}`, alice.idToken, chatRequest),
     200,
