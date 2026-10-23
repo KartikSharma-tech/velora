@@ -129,6 +129,7 @@ class FirestoreChatDataSource {
         .doc(roomId)
         .collection('messages')
         .orderBy('timestamp', descending: false)
+        .limitToLast(50)
         .snapshots()
         .map(
           (snapshot) =>
@@ -144,6 +145,7 @@ class FirestoreChatDataSource {
     return _chatRooms
         .where('participants', arrayContains: userId)
         .orderBy('lastMessageTime', descending: true)
+        .limit(30)
         .snapshots()
         .handleError((e) {
           debugPrint('chatRoomsStream error: $e');

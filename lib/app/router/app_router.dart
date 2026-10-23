@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/contacts/presentation/screens/discover_screen.dart';
@@ -44,7 +45,7 @@ static void backOrHome(BuildContext context) {
 
   static final GoRouter router = GoRouter(
     initialLocation: splash,
-    debugLogDiagnostics: true,
+    debugLogDiagnostics: kDebugMode,
     routes: [
       GoRoute(
         path: splash,
@@ -90,7 +91,13 @@ static void backOrHome(BuildContext context) {
         path: chat,
         name: 'chat',
         builder: (context, state) {
-          final args = state.extra as Map<String, dynamic>;
+          final args = state.extra as Map<String, dynamic>?;
+
+          if (args == null) {
+            return const Scaffold(
+              body: Center(child: Text('Invalid navigation')),
+            );
+          }
 
           return ChatScreen(
             roomId: args['roomId'] as String,
