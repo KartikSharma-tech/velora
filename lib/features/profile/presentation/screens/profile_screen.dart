@@ -165,6 +165,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           _photoController.text = user.photoUrl;
           _usernameController.text = user.username ?? '';
           _initialized = true;
+        } else if (user.photoUrl.isNotEmpty &&
+            user.photoUrl != _photoController.text) {
+          // FIX: Firestore se naya photoUrl aaya — sync karo
+          _photoController.text = user.photoUrl;
         }
 
         final photoUrl = _photoController.text.trim();
@@ -248,13 +252,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               const Text('Phone Number',
                   style: TextStyle(fontWeight: FontWeight.w600)),
               const SizedBox(height: 6),
+              // FIX: Controller hata diya — har rebuild pe leak hota tha
               TextField(
-                controller:
-                    TextEditingController(text: user.phoneNumber ?? ''),
                 readOnly: true,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.phone),
+                decoration: InputDecoration(
+                  border: const OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.phone),
+                  hintText: user.phoneNumber ?? 'Not set',
                 ),
               ),
               const SizedBox(height: 20),
