@@ -40,7 +40,9 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
         await ref.read(contactRepositoryProvider).requestPermission();
 
     if (granted) {
-      ref.invalidate(contactSyncProvider(true));
+      ref.invalidate(hasContactsPermissionProvider);
+      await ref.refresh(contactSyncProvider(true).future);
+      ref.invalidate(contactSyncProvider(false));
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -383,8 +385,10 @@ class _ContactsList extends ConsumerWidget {
             }
 
             return RefreshIndicator(
-              onRefresh: () async =>
-                  ref.invalidate(contactSyncProvider(true)),
+              onRefresh: () async {
+                await ref.refresh(contactSyncProvider(true).future);
+                ref.invalidate(contactSyncProvider(false));
+              },
               child: CustomScrollView(
                 slivers: [
                   if (onVelora.isNotEmpty) ...[

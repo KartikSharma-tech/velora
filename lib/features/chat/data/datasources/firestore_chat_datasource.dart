@@ -172,7 +172,6 @@ class FirestoreChatDataSource {
   Stream<List<ChatTileModel>> getChatTiles(String currentUserId) {
     return _chatRooms
         .where('participants', arrayContains: currentUserId)
-        .orderBy('lastMessageTime', descending: true)
         .snapshots()
         .asyncMap((snapshot) async {
           final List<ChatTileModel> chats = [];
@@ -188,28 +187,29 @@ class FirestoreChatDataSource {
               (id) => id != currentUserId,
             );
 
-            final userDoc = await _firestore
-                .collection('public_profiles')
-                .doc(otherUserId)
-                .get();
-
-            if (!userDoc.exists) {
-              continue;
+            UserModel? user;
+            try {
+              final userDoc = await _firestore
+                  .collection('public_profiles')
+                  .doc(otherUserId)
+                  .get();
+              if (userDoc.exists) {
+                user = UserModel.fromMap(userDoc.data()!);
+              }
+            } catch (_) {
+              // Keep legacy chats visible when a public profile is unavailable.
             }
-
-            final user = UserModel.fromMap(userDoc.data()!);
-
             chats.add(
               ChatTileModel(
                 roomId: room.id,
-                otherUserId: user.uid,
-                otherUserName: user.name,
-                otherUserPhoto: user.photoUrl,
+                otherUserId: user?.uid ?? otherUserId,
+                otherUserName: user?.name ?? 'Velora User',
+                otherUserPhoto: user?.photoUrl ?? '',
                 lastMessage: room.lastMessage,
                 lastMessageTime: room.lastMessageTime,
                 lastMessageSeen: room.lastMessageSeen,
-                otherUserOnline: user.isOnline,
-                otherUserLastSeen: user.lastSeen ?? DateTime.now(),
+                otherUserOnline: user?.isOnline ?? false,
+                otherUserLastSeen: user?.lastSeen ?? room.lastMessageTime,
                 isPinned: room.pinnedBy.contains(currentUserId),
               ),
             );

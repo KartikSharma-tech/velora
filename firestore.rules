@@ -94,10 +94,10 @@ service cloud.firestore {
 
       allow delete: if isUser(userId);
 
-      // A user's FCM registration tokens are private to that account.
+      // FIX 1: FCM device tokens — client directly Firestore mein save kar sakta hai
       match /devices/{deviceId} {
-        // Device tokens are managed by an App Check protected server endpoint.
-        allow read, write: if false;
+        allow read: if false;
+        allow write: if isUser(userId);
       }
     }
 
@@ -168,6 +168,7 @@ service cloud.firestore {
         ]);
       allow delete: if isUser(userId);
     }
+
     match /chat_rooms/{roomId} {
       function recipientHasSenderAsContact(otherUserId) {
         let contactsPath = /databases/$(database)/documents/message_contacts/$(otherUserId);
@@ -393,7 +394,6 @@ service cloud.firestore {
           && request.resource.data.senderId == resource.data.senderId
           && request.resource.data.receiverId == resource.data.receiverId
           && (
-            // Only the recipient may advance delivery and read receipts.
             (request.auth.uid == resource.data.receiverId
               && changedKeys().hasOnly([
                 'isDelivered', 'deliveredAt', 'isSeen', 'seenAt'
@@ -406,7 +406,6 @@ service cloud.firestore {
               && (!changedKeys().hasAny(['isSeen', 'seenAt'])
                 || (request.resource.data.isSeen == true
                   && request.resource.data.seenAt is timestamp)))
-            // Each participant may hide a message for themselves only.
             || (changedKeys().hasOnly(['deletedFor'])
               && request.resource.data.get('deletedFor', []) is list
               && resource.data.get('deletedFor', []) is list
@@ -414,7 +413,6 @@ service cloud.firestore {
               && request.resource.data.get('deletedFor', []).toSet()
                 .difference(resource.data.get('deletedFor', []).toSet())
                 .hasOnly([request.auth.uid]))
-            // A participant may change only their own reaction.
             || (changedKeys().hasOnly(['reactions'])
               && request.resource.data.get('reactions', {}) is map
               && request.resource.data.reactions.size() <= 2
@@ -424,7 +422,6 @@ service cloud.firestore {
               && (!(request.auth.uid in request.resource.data.reactions.keys())
                 || (request.resource.data.reactions[request.auth.uid] is string
                   && request.resource.data.reactions[request.auth.uid].size() <= 8)))
-            // Only the original sender may delete the message for everyone.
             || (request.auth.uid == resource.data.senderId
               && resource.data.get('isDeletedForEveryone', false) == false
               && changedKeys().hasOnly([
@@ -441,9 +438,10 @@ service cloud.firestore {
       }
     }
 
-    // Contact indexes are written only by the trusted contact lookup function.
+    // FIX 2: Contacts — read allow kiya taaki invite/contact check kaam kare
     match /message_contacts/{userId} {
-      allow read, write: if false;
+      allow read: if isUser(userId);
+      allow write: if false;
     }
 
     match /chat_requests/{requestId} {

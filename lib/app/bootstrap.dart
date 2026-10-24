@@ -17,8 +17,9 @@ Future<void> bootstrap() async {
 
   // Set error handlers FIRST, before anything else can fail
   FlutterError.onError = (FlutterErrorDetails details) {
-    FlutterError.presentError(details);
-    debugPrint('FLUTTER ERROR: ${details.exceptionAsString()}');
+    if (kDebugMode) {
+      FlutterError.presentError(details);
+    }
   };
 
   ErrorWidget.builder = (FlutterErrorDetails details) {
@@ -26,7 +27,12 @@ Future<void> bootstrap() async {
       child: Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
-          child: Text(details.exceptionAsString(), textAlign: TextAlign.center),
+          child: Text(
+            kDebugMode
+                ? details.exceptionAsString()
+                : 'Something went wrong. Please try again.',
+            textAlign: TextAlign.center,
+          ),
         ),
       ),
     );
@@ -100,11 +106,19 @@ Future<void> bootstrap() async {
       debugPrint('Notification initialization failed: $e\n$st');
     }
   } catch (e, st) {
-    debugPrint('BOOTSTRAP FAILED: $e');
-    debugPrint('STACK:\n$st');
+    if (kDebugMode) {
+      debugPrint('BOOTSTRAP FAILED: ' + e.toString());
+      debugPrint('STACK:\n' + st.toString());
+    }
     runApp(
       MaterialApp(
-        home: Scaffold(body: Center(child: Text('Bootstrap error: $e'))),
+        home: const Scaffold(
+          body: Center(
+            child: Text(
+              'Unable to start Velora. Please restart the app.',
+            ),
+          ),
+        ),
       ),
     );
   }

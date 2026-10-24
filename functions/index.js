@@ -489,13 +489,48 @@ exports.createCloudinaryUploadSignature = onRequest(
       return;
     }
 
-    const { roomId, messageId, profile } = req.body || {};
+    const fileBytes = req.rawBody;
+    const contentLength = Number(req.get('content-length') || 0);
+    const maxFileBytes = 10 * 1024 * 1024;
+    if (!Buffer.isBuffer(fileBytes) || fileBytes.length === 0) {
+      res.status(400).send('Image file required');
+      return;
+    }
+    if (fileBytes.length > maxFileBytes || contentLength > maxFileBytes) {
+      res.status(413).send('Image must be smaller than 10 MB');
+      return;
+    }
+
+    let imageFormat;
+    let mimeType;
+    if (fileBytes.length >= 3 &&
+        fileBytes[0] === 0xff && fileBytes[1] === 0xd8 && fileBytes[2] === 0xff) {
+      imageFormat = 'jpg';
+      mimeType = 'image/jpeg';
+    } else if (fileBytes.length >= 8 &&
+        fileBytes.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) {
+      imageFormat = 'png';
+      mimeType = 'image/png';
+    } else if (fileBytes.length >= 12 &&
+        fileBytes.toString('ascii', 0, 4) === 'RIFF' &&
+        fileBytes.toString('ascii', 8, 12) === 'WEBP') {
+      imageFormat = 'webp';
+      mimeType = 'image/webp';
+    } else {
+      res.status(415).send('Only JPEG, PNG, and WebP images are allowed');
+      return;
+    }
+
+    const profile = req.get('X-Velora-Profile-Upload') === 'true';
+    const roomId = req.get('X-Velora-Room-Id');
+    const messageId = req.get('X-Velora-Message-Id');
+    const allowedFormats = 'jpg,jpeg,png,webp';
     let folder;
     let publicId;
-    if (profile === true && roomId == null && messageId == null) {
+    if (profile && roomId == null && messageId == null) {
       folder = 'profile_images';
-      publicId = `profile_${uid}_${crypto.randomUUID()}`;
-    } else if (profile !== true && typeof roomId === 'string' &&
+      publicId = 'profile_' + uid + '_' + crypto.randomUUID();
+    } else if (!profile && typeof roomId === 'string' &&
         /^[A-Za-z0-9_-]{1,256}$/.test(roomId) &&
         typeof messageId === 'string' && /^[A-Za-z0-9_-]{1,100}$/.test(messageId)) {
       const room = await getFirestore().collection('chat_rooms').doc(roomId).get();
@@ -520,7 +555,7 @@ exports.createCloudinaryUploadSignature = onRequest(
         res.status(403).send('Chat room access denied');
         return;
       }
-      folder = `chat_images/${roomId}`;
+      folder = 'chat_images/' + roomId;
       publicId = messageId;
     } else {
       res.status(400).send('Invalid upload request');
@@ -534,24 +569,51 @@ exports.createCloudinaryUploadSignature = onRequest(
         public_id: publicId,
         timestamp,
         upload_preset: 'velora_mobile_signed',
+        allowed_formats: allowedFormats,
         overwrite: false,
       };
       const signatureBase = Object.keys(params).sort()
-        .map((key) => `${key}=${params[key]}`).join('&');
+        .map((key) => key + '=' + params[key]).join('&');
       const signature = crypto.createHash('sha256')
         .update(signatureBase + cloudinaryApiSecret.value())
         .digest('hex');
+
+      const cloudinaryForm = new FormData();
+      cloudinaryForm.append('file', new Blob([fileBytes], { type: mimeType }), 'upload.' + imageFormat);
+      cloudinaryForm.append('api_key', cloudinaryApiKey.value());
+      cloudinaryForm.append('folder', folder);
+      cloudinaryForm.append('public_id', publicId);
+      cloudinaryForm.append('timestamp', String(timestamp));
+      cloudinaryForm.append('upload_preset', 'velora_mobile_signed');
+      cloudinaryForm.append('allowed_formats', allowedFormats);
+      cloudinaryForm.append('overwrite', 'false');
+      cloudinaryForm.append('signature', signature);
+
+      const cloudinaryResponse = await fetch(
+        'https://api.cloudinary.com/v1_1/' + cloudinaryCloudName.value() + '/image/upload',
+        { method: 'POST', body: cloudinaryForm, signal: AbortSignal.timeout(120000) },
+      );
+      if (!cloudinaryResponse.ok) {
+        logger.warn('Cloudinary upload rejected', { status: cloudinaryResponse.status });
+        res.status(502).send('Image upload failed');
+        return;
+      }
+      const cloudinaryResult = await cloudinaryResponse.json();
+      const secureUrl = cloudinaryResult.secure_url;
+      if (typeof secureUrl !== 'string' ||
+          !secureUrl.startsWith('https://res.cloudinary.com/' +
+            cloudinaryCloudName.value() + '/image/upload/')) {
+        logger.error('Cloudinary returned an invalid image URL');
+        res.status(502).send('Image upload failed');
+        return;
+      }
       res.status(200).json({
-        apiKey: cloudinaryApiKey.value(),
+        secureUrl,
         cloudName: cloudinaryCloudName.value(),
-        folder,
-        publicId,
-        timestamp,
-        signature,
       });
     } catch (error) {
-      logger.error('Cloudinary upload signature failed', { uid, error: error.message });
-      res.status(500).send('Upload authorization failed');
+      logger.error('Cloudinary upload failed', { uid, error: error.message });
+      res.status(500).send('Image upload failed');
     }
   },
 );

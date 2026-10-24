@@ -1,14 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:firebase_app_check/firebase_app_check.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:http/http.dart' as http;
 
 import '../../app/router/app_router.dart';
 
@@ -24,6 +23,7 @@ class NotificationService {
 
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FlutterLocalNotificationsPlugin _local =
       FlutterLocalNotificationsPlugin();
   StreamSubscription<User?>? _authSubscription;
@@ -33,11 +33,6 @@ class NotificationService {
   String? _registeredUid;
   String? _registeredToken;
   bool _initialized = false;
-
-  Uri get _deviceEndpoint => Uri.https(
-    'us-central1-${Firebase.app().options.projectId}.cloudfunctions.net',
-    '/manageNotificationDevice',
-  );
 
   static const AndroidNotificationChannel _channel = AndroidNotificationChannel(
     'velora_messages',
@@ -164,50 +159,34 @@ class NotificationService {
     _registeredToken = null;
   }
 
+  // FIX: Cloud Function hata diya — directly Firestore mein save karo
   Future<void> _storeToken(String uid, String token) async {
     final user = _auth.currentUser;
     if (user == null || user.uid != uid) return;
-    await _updateDevice(user, action: 'register', token: token);
+    await _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('devices')
+        .doc(token)
+        .set({
+      'token': token,
+      'platform': defaultTargetPlatform.name,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
     _registeredUid = uid;
     _registeredToken = token;
   }
 
+  // FIX: Cloud Function hata diya — directly Firestore se delete karo
   Future<void> _deleteToken(String uid, String token) async {
     final user = _auth.currentUser;
     if (user == null || user.uid != uid) return;
-    await _updateDevice(user, action: 'unregister', token: token);
-  }
-
-  Future<void> _updateDevice(
-    User user, {
-    required String action,
-    required String token,
-  }) async {
-    final idToken = await user.getIdToken();
-    final appCheckToken = await FirebaseAppCheck.instance.getToken();
-    if (appCheckToken == null) {
-      throw StateError('Unable to verify this app for notification setup.');
-    }
-    final response = await http
-        .post(
-          _deviceEndpoint,
-          headers: {
-            'Authorization': 'Bearer $idToken',
-            'Content-Type': 'application/json',
-            'X-Firebase-AppCheck': appCheckToken,
-          },
-          body: jsonEncode({
-            'action': action,
-            'deviceToken': token,
-            if (action == 'register') 'platform': defaultTargetPlatform.name,
-          }),
-        )
-        .timeout(const Duration(seconds: 20));
-    if (response.statusCode != 204) {
-      throw StateError(
-        'Notification device update failed (${response.statusCode}).',
-      );
-    }
+    await _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('devices')
+        .doc(token)
+        .delete();
   }
 
   Future<void> _showForegroundNotification(RemoteMessage message) async {

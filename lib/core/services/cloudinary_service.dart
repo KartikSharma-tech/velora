@@ -12,7 +12,6 @@ class CloudinaryService {
   const CloudinaryService();
 
   static const int _maxFileBytes = 10 * 1024 * 1024;
-  static const String _signedUploadPreset = 'velora_mobile_signed';
 
   Future<String> uploadImage({
     required File file,
@@ -29,15 +28,14 @@ class CloudinaryService {
 
     final isProfileUpload =
         folder == 'profile_images' && publicId == 'profile_${user.uid}';
-    final requestBody = <String, Object>{};
+    String? roomId;
     if (isProfileUpload) {
-      requestBody['profile'] = true;
+      // Profile upload is identified by the absence of chat metadata.
     } else if (folder.startsWith('chat_images/')) {
-      final roomId = folder.substring('chat_images/'.length);
+      roomId = folder.substring('chat_images/'.length);
       if (roomId.isEmpty || roomId.contains('/')) {
         throw ArgumentError('Invalid chat room upload path.');
       }
-      requestBody.addAll({'roomId': roomId, 'messageId': publicId});
     } else {
       throw ArgumentError('Unsupported image upload path.');
     }
@@ -46,7 +44,7 @@ class CloudinaryService {
     if (projectId.isEmpty) {
       throw StateError('Firebase project is not configured.');
     }
-    final signatureUrl = Uri.https(
+    final uploadUrl = Uri.https(
       'us-central1-$projectId.cloudfunctions.net',
       '/createCloudinaryUploadSignature',
     );
@@ -55,70 +53,35 @@ class CloudinaryService {
     if (appCheckToken == null) {
       throw StateError('Unable to verify this app for image upload.');
     }
-    final signatureResponse = await http
-        .post(
-          signatureUrl,
-          headers: {
-            HttpHeaders.authorizationHeader: 'Bearer $idToken',
-            HttpHeaders.contentTypeHeader: 'application/json',
-            'X-Firebase-AppCheck': appCheckToken,
-          },
-          body: jsonEncode(requestBody),
-        )
-        .timeout(const Duration(seconds: 20));
-    if (signatureResponse.statusCode != 200) {
-      throw StateError('Image upload authorization failed.');
+    final headers = <String, String>{
+      HttpHeaders.authorizationHeader: 'Bearer $idToken',
+      HttpHeaders.contentTypeHeader: 'application/octet-stream',
+      'X-Firebase-AppCheck': appCheckToken,
+    };
+    if (isProfileUpload) {
+      headers['X-Velora-Profile-Upload'] = 'true';
+    } else {
+      headers['X-Velora-Room-Id'] = roomId!;
+      headers['X-Velora-Message-Id'] = publicId;
     }
 
-    final signatureData =
-        jsonDecode(signatureResponse.body) as Map<String, dynamic>;
-    final cloudName = signatureData['cloudName'] as String?;
-    final apiKey = signatureData['apiKey'] as String?;
-    final signedFolder = signatureData['folder'] as String?;
-    final signedPublicId = signatureData['publicId'] as String?;
-    final timestamp = signatureData['timestamp'];
-    final signature = signatureData['signature'] as String?;
+    final uploadResponse = await http.post(
+      uploadUrl,
+      headers: headers,
+      body: await file.readAsBytes(),
+    ).timeout(const Duration(minutes: 2));
+    if (uploadResponse.statusCode != 200) {
+      throw StateError('Image upload failed.');
+    }
+
+    final responseData =
+        jsonDecode(uploadResponse.body) as Map<String, dynamic>;
+    final secureUrl = responseData['secureUrl'] as String?;
+    final cloudName = responseData['cloudName'] as String?;
     if (cloudName == null ||
-        !RegExp(r'^[a-zA-Z0-9-]+$').hasMatch(cloudName) ||
-        apiKey == null ||
-        signedFolder != folder ||
-        (!isProfileUpload && signedPublicId != publicId) ||
-        (isProfileUpload &&
-            !RegExp(
-              '^profile_${RegExp.escape(user.uid)}_[0-9a-f-]{36}\$',
-            ).hasMatch(signedPublicId ?? '')) ||
-        timestamp is! int ||
-        signature == null ||
-        !RegExp(r'^[a-fA-F0-9]{64}$').hasMatch(signature)) {
-      throw StateError('Invalid image upload authorization response.');
+        !RegExp(r'^[a-zA-Z0-9-]+$').hasMatch(cloudName)) {
+      throw StateError('Invalid image upload response.');
     }
-
-    final uploadUrl = Uri.https(
-      'api.cloudinary.com',
-      '/v1_1/$cloudName/image/upload',
-    );
-    final uploadRequest = http.MultipartRequest('POST', uploadUrl)
-      ..fields['api_key'] = apiKey
-      ..fields['folder'] = signedFolder!
-      ..fields['public_id'] = signedPublicId!
-      ..fields['timestamp'] = timestamp.toString()
-      ..fields['signature'] = signature
-      ..fields['upload_preset'] = _signedUploadPreset
-      ..fields['overwrite'] = 'false'
-      ..files.add(await http.MultipartFile.fromPath('file', file.path));
-
-    final streamedResponse = await uploadRequest.send().timeout(
-      const Duration(minutes: 2),
-    );
-    final response = await http.Response.fromStream(streamedResponse);
-    if (response.statusCode != 200) {
-      throw StateError(
-        'Cloudinary image upload failed (${response.statusCode}).',
-      );
-    }
-
-    final data = jsonDecode(response.body) as Map<String, dynamic>;
-    final secureUrl = data['secure_url'] as String?;
     final parsedUrl = secureUrl == null ? null : Uri.tryParse(secureUrl);
     if (parsedUrl == null ||
         parsedUrl.scheme != 'https' ||
