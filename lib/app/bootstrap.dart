@@ -107,8 +107,8 @@ Future<void> bootstrap() async {
     }
   } catch (e, st) {
     if (kDebugMode) {
-      debugPrint('BOOTSTRAP FAILED: ' + e.toString());
-      debugPrint('STACK:\n' + st.toString());
+      debugPrint('BOOTSTRAP FAILED: $e');
+      debugPrint('STACK:\n$st');
     }
     runApp(
       MaterialApp(

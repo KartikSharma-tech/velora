@@ -41,8 +41,10 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen> {
 
     if (granted) {
       ref.invalidate(hasContactsPermissionProvider);
-      await ref.refresh(contactSyncProvider(true).future);
-      ref.invalidate(contactSyncProvider(false));
+      final syncResult = await ref.refresh(contactSyncProvider(true).future);
+      if (!syncResult.fromCache) {
+        ref.invalidate(contactSyncProvider(false));
+      }
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -386,8 +388,10 @@ class _ContactsList extends ConsumerWidget {
 
             return RefreshIndicator(
               onRefresh: () async {
-                await ref.refresh(contactSyncProvider(true).future);
-                ref.invalidate(contactSyncProvider(false));
+                final syncResult = await ref.refresh(contactSyncProvider(true).future);
+                if (!syncResult.fromCache) {
+                  ref.invalidate(contactSyncProvider(false));
+                }
               },
               child: CustomScrollView(
                 slivers: [
